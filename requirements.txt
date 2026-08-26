@@ -1,0 +1,38 @@
+# Local decision engine (src/, scripts/) — CPU only, no GPU required.
+#
+# The shipped model is a 2-model ensemble (XGBoost + LightGBM, simple-averaged after
+# independent Platt calibration) — see docs/experiments.md for why. Both are PINNED, not
+# just constrained, and both pins are load-bearing, not cosmetic:
+# xgboost: verified directly that xgboost 3.0.0 loading a model trained on 3.2.0 gives
+# a 23x different raw probability (0.169 vs 0.007) on byte-identical input, with no error
+# or warning on its own. src/model.py also checks this at runtime and refuses to score on
+# a mismatch (see XGBoostVersionMismatchError) — this pin is the fix, that check is the
+# safety net for when someone doesn't use this file.
+# lightgbm: no cross-version gap of this specific size has been independently measured the
+# way the XGBoost one was, but src/model.py applies the exact same fail-closed guard
+# (LightGBMVersionMismatchError) rather than assume a mismatch is safe — this pin keeps
+# that guard from ever firing on a clean install. Confirmed from the real Kaggle training
+# run's feature_manifest.json ("lightgbm_version": "4.6.0"), not guessed.
+xgboost==3.2.0
+lightgbm==4.6.0
+
+pandas>=2.2,<3.1
+numpy>=2.0,<2.6
+shap>=0.50
+anthropic>=1.0
+
+# Dev-only: runs tests/. Not needed to run the engine itself (scripts/demo_engine.py has
+# no test-framework dependency at all, by design — it's meant to work from a bare install).
+pytest>=8.0
+
+# scikit-learn: NOT imported anywhere in src/ or scripts/ — Platt calibration is fit on
+# Kaggle (LogisticRegression), but src/model.py re-implements the sigmoid by hand from two
+# saved numbers (see notebook 04's engine-build addendum for why: no sklearn-version fragility,
+# stays auditable). It still ends up installed anyway, as a transitive dependency of `shap`
+# (confirmed via a clean-install test) — that's fine, just not something this project's
+# own code relies on directly. Not listed explicitly here for that reason.
+
+# Setup:
+#   python -m venv .venv
+#   .venv\Scripts\pip install -r requirements.txt      (Windows)
+#   .venv/bin/pip install -r requirements.txt           (Mac/Linux)

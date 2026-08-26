@@ -1,0 +1,498 @@
+<title>Arbiter Docket</title>
+<meta name="color-scheme" content="dark light">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,ital@9..144,300..700,0..1&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  /* ============ TOKENS — dark-first: bare :root IS the primary look ============ */
+  :root{
+    --ink:#EDE6D6; --ink-dim:#B9AF9C; --muted:#8B8172;
+    --paper:#120F0B; --paper-2:#1B1712; --paper-3:#221D16;
+    --seal:#C79A48; --seal-bright:#E2B565; --seal-ink:#241A0A;
+    --good:#7FA487; --good-soft:#1B241D;
+    --risk:#C07059; --risk-soft:#2A1913;
+    --line:rgba(237,230,214,.14); --line-strong:rgba(237,230,214,.28);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 48px -20px rgba(0,0,0,.6);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --ink:#1C1712; --ink-dim:#4A4136; --muted:#756A5B;
+      --paper:#F5EFE2; --paper-2:#ECE3D0; --paper-3:#E3D8C0;
+      --seal:#8F6E28; --seal-bright:#6E5420; --seal-ink:#FBF6EA;
+      --good:#3F6B49; --good-soft:#E1EAE2;
+      --risk:#96402D; --risk-soft:#F1DFD8;
+      --line:rgba(28,23,18,.14); --line-strong:rgba(28,23,18,.30);
+      --shadow: 0 1px 2px rgba(0,0,0,.06), 0 20px 48px -20px rgba(0,0,0,.16);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#EDE6D6; --ink-dim:#B9AF9C; --muted:#8B8172;
+    --paper:#120F0B; --paper-2:#1B1712; --paper-3:#221D16;
+    --seal:#C79A48; --seal-bright:#E2B565; --seal-ink:#241A0A;
+    --good:#7FA487; --good-soft:#1B241D;
+    --risk:#C07059; --risk-soft:#2A1913;
+    --line:rgba(237,230,214,.14); --line-strong:rgba(237,230,214,.28);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 48px -20px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
+
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--seal); color:var(--seal-ink); }
+
+  h1,h2,h3,h4{ font-family:'Fraunces', Georgia, serif; text-wrap:balance; color:var(--ink); margin:0; font-weight:500; }
+  .mono{ font-family:'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+  a{ color:inherit; }
+  p{ margin:0 0 16px; color:var(--ink-dim); max-width:64ch; }
+  strong{ color:var(--ink); font-weight:600; }
+  em{ color:var(--seal-bright); font-style:italic; }
+
+  .rail{ max-width:960px; margin:0 auto; padding:0 28px; position:relative; }
+  .rail-wide{ max-width:1080px; }
+
+  /* docket rail — vertical marginalia, desktop only */
+  .docket-tab{
+    position:fixed; top:0; left:0; height:100vh; width:56px; z-index:5;
+    display:flex; align-items:center; justify-content:center;
+    border-right:1px solid var(--line); pointer-events:none;
+  }
+  .docket-tab span{
+    writing-mode:vertical-rl; transform:rotate(180deg);
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  @media (max-width:1100px){ .docket-tab{ display:none; } }
+  body{ margin-left:0; }
+  @media (min-width:1101px){ .rail{ margin-left:56px; } .docket-tab-space{ display:block; } }
+
+  section{ padding:104px 0; border-top:1px solid var(--line); }
+  section:first-of-type{ border-top:none; }
+  .exhibit-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:36px; }
+  .exhibit-head .num{ font-family:'IBM Plex Mono',monospace; color:var(--seal); font-size:13px; letter-spacing:.1em; white-space:nowrap; }
+  .exhibit-head h2{ font-size:clamp(1.7rem,3.4vw,2.3rem); font-weight:500; }
+  .exhibit-head .rule{ flex:1; height:1px; background:var(--line); align-self:center; }
+  .kicker{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--seal); margin:0 0 18px; display:flex; align-items:center; gap:10px;
+  }
+  .kicker::before{ content:""; width:26px; height:1px; background:var(--seal); }
+
+  /* reveal-on-scroll — fast & decisive, not cinematic */
+  .rv{ opacity:0; transform:translateY(14px); transition:opacity .38s cubic-bezier(.2,.7,.2,1), transform .38s cubic-bezier(.2,.7,.2,1); }
+  .rv.in{ opacity:1; transform:none; }
+
+  /* ============ COVER ============ */
+  .cover{ padding:120px 0 80px; }
+  .cover .stamp-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:64px; }
+  .case-no{ font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--muted); }
+  .seal-mark{
+    width:40px; height:40px; border:1px solid var(--seal); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; color:var(--seal);
+    font-family:'Fraunces',serif; font-style:italic; font-size:18px;
+  }
+  .cover h1{ font-size:clamp(3.4rem,10vw,7.2rem); line-height:.94; letter-spacing:-.01em; font-weight:500; }
+  .cover h1 em{ font-style:italic; font-weight:400; color:var(--seal-bright); }
+  .cover .lede{ font-size:1.2rem; max-width:46ch; margin-top:26px; font-family:'Fraunces',serif; font-weight:300; color:var(--ink-dim); line-height:1.5; }
+  .cover .track{ margin-top:8px; font-size:.95rem; color:var(--muted); }
+
+  .ledger-strip{ display:flex; flex-wrap:wrap; gap:0; margin-top:56px; border-top:1px solid var(--line-strong); }
+  .ledger-cell{ flex:1 1 180px; padding:20px 24px 20px 0; border-right:1px solid var(--line); }
+  .ledger-cell:last-child{ border-right:none; }
+  .ledger-cell .v{ font-family:'IBM Plex Mono',monospace; font-size:1.7rem; font-weight:600; color:var(--seal-bright); }
+  .ledger-cell .l{ font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:6px; }
+
+  /* ============ RECORD list (decisions) ============ */
+  .record{ display:grid; grid-template-columns:170px 1fr; gap:6px 28px; padding:22px 0; border-top:1px solid var(--line); }
+  .record:last-child{ border-bottom:1px solid var(--line); }
+  .record .k{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; padding-top:4px; }
+  .record .choice{ font-family:'Fraunces',serif; font-size:1.22rem; color:var(--ink); margin-bottom:6px; }
+  @media (max-width:620px){ .record{ grid-template-columns:1fr; } }
+
+  /* ============ DOCKET (journal timeline) ============ */
+  .docket-log{ border-left:2px solid var(--line-strong); margin-left:8px; }
+  .dentry{ position:relative; padding:6px 0 44px 34px; }
+  .dentry::before{ content:""; position:absolute; left:-8px; top:6px; width:14px; height:14px; border-radius:50%; background:var(--paper); border:2px solid var(--seal); }
+  .dentry:last-child{ padding-bottom:6px; }
+  .dhead{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  .dtag{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--paper); background:var(--seal); padding:3px 9px; letter-spacing:.08em; }
+  .dentry h3{ font-size:1.28rem; font-weight:500; }
+  .verdict-chip{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+    padding:3px 10px; border:1px solid currentColor; transform:rotate(-1deg); display:inline-block;
+  }
+  .verdict-chip.good{ color:var(--good); background:var(--good-soft); }
+  .verdict-chip.risk{ color:var(--risk); background:var(--risk-soft); }
+  .verdict-chip.watch{ color:var(--seal-bright); background:var(--paper-3); }
+  .dfig{ display:flex; gap:24px; flex-wrap:wrap; margin:14px 0 4px; padding:14px 18px; background:var(--paper-2); border:1px solid var(--line); }
+  .dfig .f .fl{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .dfig .f .fv{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14.5px; color:var(--ink); }
+
+  /* ============ LEDGER TABLE ============ */
+  .tbl-wrap{ overflow-x:auto; }
+  table{ border-collapse:collapse; width:100%; min-width:600px; font-family:'IBM Plex Mono',monospace; font-size:13.5px; }
+  thead th{ text-align:left; font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:0 16px 12px 0; border-bottom:1px solid var(--line-strong); }
+  tbody td{ padding:13px 16px 13px 0; border-bottom:1px solid var(--line); color:var(--ink-dim); }
+  tbody tr.final td{ color:var(--ink); font-weight:600; }
+  td.pos{ color:var(--good); } td.neg{ color:var(--risk); }
+  td.id{ color:var(--seal); font-weight:600; }
+  .tbl-note{ font-family:'Inter',sans-serif; font-size:12.5px; color:var(--muted); margin-top:12px; }
+
+  /* ============ VERDICT / cost model — poster-scale numbers ============ */
+  .verdict-block{ text-align:left; margin:8px 0 40px; }
+  .verdict-block .figure{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:-.01em;
+    font-size:clamp(3.2rem,11vw,7.5rem); line-height:.95; color:var(--seal-bright);
+  }
+  .verdict-block .cap{ font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:10px; }
+  .outcome-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); margin:32px 0; }
+  .outcome-cell{ background:var(--paper); padding:22px; }
+  .outcome-cell .t{ font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:8px; }
+  .outcome-cell .v{ font-family:'IBM Plex Mono',monospace; font-size:1.5rem; font-weight:600; color:var(--ink); }
+  @media (max-width:620px){ .outcome-row{ grid-template-columns:1fr; } }
+
+  /* ============ CONCEPT panels ============ */
+  .concept{ padding:26px 0; border-top:1px solid var(--line); }
+  .concept:last-child{ border-bottom:1px solid var(--line); }
+  .concept h4{ font-size:1.15rem; margin-bottom:10px; }
+  .concept .tag{ display:inline-block; margin-top:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--seal); border:1px solid var(--seal); padding:2px 9px; }
+
+  /* ============ failure-path ledger ============ */
+  .fail-row{ display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:18px 0; border-top:1px solid var(--line); }
+  .fail-row:last-child{ border-bottom:1px solid var(--line); }
+  .fail-row .what{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--risk); }
+  .fail-row .resp{ font-size:14.5px; color:var(--ink-dim); }
+  @media (max-width:620px){ .fail-row{ grid-template-columns:1fr; } }
+
+  /* ============ diff ============ */
+  .diff{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); margin-top:20px; }
+  .diff .col{ background:var(--paper); padding:24px 26px; }
+  .diff .col .h{ font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.1em; margin-bottom:14px; font-weight:600; }
+  .diff .col.no .h{ color:var(--risk); } .diff .col.yes .h{ color:var(--good); }
+  .diff ul{ margin:0; padding-left:18px; font-size:.94rem; color:var(--ink-dim); }
+  .diff li{ margin-bottom:9px; }
+  @media (max-width:620px){ .diff{ grid-template-columns:1fr; } }
+
+  /* ============ transcript / exhibit ============ */
+  .exhibit-card{ border:1px solid var(--line-strong); background:var(--paper-2); margin-bottom:22px; box-shadow:var(--shadow); }
+  .exhibit-card .tab{ display:flex; justify-content:space-between; align-items:center; padding:11px 18px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; color:var(--muted); text-transform:uppercase; }
+  .exhibit-card .body{ padding:22px 24px; }
+  .xline{ margin-bottom:14px; }
+  .xline:last-child{ margin-bottom:0; }
+  .xwho{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--seal); margin-bottom:5px; }
+  .xtext{ font-size:15px; color:var(--ink-dim); }
+  .xtext.user{ font-style:italic; color:var(--ink); }
+  .xresolve{ margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); font-size:13.5px; color:var(--muted); }
+
+  /* ============ footer / close ============ */
+  footer{ padding:70px 0 100px; }
+  footer .sign{ font-family:'Fraunces',serif; font-style:italic; font-size:1.3rem; color:var(--seal-bright); margin-bottom:8px; }
+  footer .meta{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); }
+</style>
+
+<div class="docket-tab"><span>Case File · Track 02 — AI Risk Manager · Razorpay Buildathon 2026</span></div>
+
+<div class="rail rail-wide">
+
+  <!-- ============ COVER ============ -->
+  <section class="cover" style="border-top:none;">
+    <div class="stamp-row">
+      <span class="case-no">DOCKET NO. 02–ARB–2026</span>
+      <span class="seal-mark">A</span>
+    </div>
+    <p class="kicker">Razorpay AI Buildathon 2026 — Track 02, AI Risk Manager</p>
+    <h1>The <em>Arbiter</em><br>Docket.</h1>
+    <p class="lede">A record of every decision made while building a fraud system that prices its own judgment in real rupees — allow, step&#8209;up, or block — instead of guessing at a probability and calling it a day.</p>
+    <p class="track mono">solo build · every claim below is measured, not asserted</p>
+
+    <div class="ledger-strip">
+      <div class="ledger-cell"><div class="v">+₹1.54cr</div><div class="l">Lift vs. no system</div></div>
+      <div class="ledger-cell"><div class="v">0.5514</div><div class="l">PR-AUC, 15.8× random</div></div>
+      <div class="ledger-cell"><div class="v">99.95%</div><div class="l">Value, hard-verified</div></div>
+      <div class="ledger-cell"><div class="v">3.65×</div><div class="l">Beats a real LLM at this job</div></div>
+      <div class="ledger-cell"><div class="v">17</div><div class="l">Bugs caught before shipping</div></div>
+    </div>
+  </section>
+
+  <!-- ============ EXHIBIT 00 — THE CHARGE ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;00</span><h2>The charge</h2><div class="rule"></div></div>
+    <p style="font-size:1.08rem;">Most entries to this track will train a model to say <strong>fraud</strong> or <strong>not fraud</strong>, report an accuracy number, and call it finished. That number means nothing to a merchant. A merchant's ledger doesn't have an accuracy line — it has profit and loss, denominated in rupees: fraud that slips through, a chargeback fee, a processing fee that's never refunded, and — the line everyone forgets — a genuine customer wrongly declined, who does not come back.</p>
+    <p>So Arbiter does not output a label. For every payment it renders a <strong>verdict</strong> — <span class="mono" style="color:var(--seal)">allow</span>, <span class="mono" style="color:var(--seal)">step&#8209;up</span>, or <span class="mono" style="color:var(--seal)">block</span> — chosen by whichever option loses the fewest actual rupees, with the reasoning behind it written down, explainable, and replayable.</p>
+  </section>
+
+  <!-- ============ EXHIBIT 01 — THE RECORD ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;01</span><h2>The record</h2><div class="rule"></div></div>
+    <p>Every foundational choice, and why it survives the obvious follow-up question.</p>
+
+    <div class="record">
+      <div class="k">Track</div>
+      <div><div class="choice">02 — AI Risk Manager</div><p>Rated on fit, not prestige. The one skill actually strongest here is ML, and Razorpay's own track note calls this the one that "surfaces the risk and ML minded builders the others miss" — the least crowded of five.</p></div>
+    </div>
+    <div class="record">
+      <div class="k">Dataset</div>
+      <div><div class="choice">A real dataset, not invented data</div><p>Real merchant data is impossible to get (private, regulated). Self-generated fraud means writing the exam and the answer key — any accuracy claim would be worthless. Only a real, independently-labelled dataset survives a skeptical panel.</p></div>
+    </div>
+    <div class="record">
+      <div class="k">Which one</div>
+      <div><div class="choice">IEEE-CIS Fraud Detection</div><p>590,540 real transactions, ~3.5% fraud. Chosen over the other well-known option specifically because its columns are <em>readable</em> — card type, email domain, device — not scrambled for privacy. You cannot explain a decision you cannot read.</p></div>
+    </div>
+    <div class="record">
+      <div class="k">The split</div>
+      <div><div class="choice">By time. Never at random.</div><p>Train on the first 120 days, tune on the next 30, touch the final month exactly once. A gateway deciding today's payment has never seen tomorrow's data — so neither does this, even while learning.</p></div>
+    </div>
+    <div class="record">
+      <div class="k">Where AI sits</div>
+      <div><div class="choice">Numbers by machine learning, words by language model</div><p>Deciding allow/step-up/block is a numbers problem — put to a real head-to-head test in Exhibit 07, not assumed. Explaining <em>why</em>, in a sentence a reviewer reads in three seconds, is a language problem. The rule that separates them: the language model never gets a vote.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ EXHIBIT 02 — THE DOCKET (journal) ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;02</span><h2>The docket</h2><div class="rule"></div></div>
+    <p>Every entry below was written as it happened, not reconstructed afterward for the write-up. That distinction is the entire point of keeping one.</p>
+
+    <div class="docket-log">
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">BASELINE</span><h3>First model, first dead end</h3><span class="verdict-chip risk">scope cut</span></div>
+        <p>A deliberately plain baseline beat random guessing by 15.8× before any engineering — real signal, confirmed early. Then tried the winning Kaggle team's identity-matching trick: figure out which rows belong to the same real customer. Their reported purity was almost perfect. Eight tested key combinations later, ours wasn't — not close. Investigated to a pre-committed stop threshold, then dropped it, rather than force a shaky number into the story.</p>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">FEATURES</span><h3>Teaching it a customer's past — without cheating</h3><span class="verdict-chip watch">honest wash</span></div>
+        <p>Built nine signals from each client's prior transactions only — proved it by hand-recomputing 300 random rows, zero mismatches. Caught, and fixed, one signal that would have quietly used a customer's <em>future</em> transactions — the exact leak this entire project exists to catch, almost shipped in its own code.</p>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">TUNING</span><h3>Trimmed, tuned, then caught its own probabilities lying</h3><span class="verdict-chip good">two real wins</span></div>
+        <p>Cut 339 near-duplicate columns to 279 with no loss. An automated 60-trial search beat hand-picked settings. Then: the standard calibration technique quietly collapsed 91,271 distinct scores down to 323, blurring together transactions the model could tell apart. Caught because the drop was too large to be noise; a gentler method fixed the probabilities without touching the ranking at all.</p>
+        <div class="dfig">
+          <div class="f"><div class="fl">PR-AUC</div><div class="fv">0.5514</div></div>
+          <div class="f"><div class="fl">probability error</div><div class="fv">0.0103 → 0.0036</div></div>
+        </div>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">COST MODEL</span><h3>Priced every decision in real rupees</h3><span class="verdict-chip good">headline result</span></div>
+        <p>The actual thesis. Chargeback fee and processing fee sourced from Razorpay's own disclosed pricing, checked directly rather than assumed. Two mistakes caught before trusting the number: the dataset's amounts are in dollars, and the first currency conversion was an unchecked guess. Both fixed. Ran on 92,427 untouched test-month transactions.</p>
+        <div class="dfig">
+          <div class="f"><div class="fl">no system</div><div class="fv">₹15.68cr</div></div>
+          <div class="f"><div class="fl">naive 0.5</div><div class="fv">₹16.58cr</div></div>
+          <div class="f"><div class="fl">Arbiter</div><div class="fv" style="color:var(--seal-bright)">₹17.22cr</div></div>
+        </div>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">ENGINE</span><h3>Left Kaggle. Found the project's worst bug.</h3><span class="verdict-chip good">13 / 13</span></div>
+        <p>Built the real, standalone engine — CPU only, no GPU, no notebook. Then, moving to a clean environment: the model library's local version differed from Kaggle's training version. Same input, two versions, one said 17% fraud probability, the other said 0.7% — <strong>a 23× difference, silently, no error at all.</strong> Fixed with a hard version pin, plus a runtime guard that refuses to score on any future mismatch — then deliberately broke the guard to confirm it actually fires.</p>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">EXPLAIN</span><h3>Gave every flagged case a reason — then tried to break it</h3><span class="verdict-chip good">core proven</span></div>
+        <p>SHAP contributions, rendered into a plain-English sentence by a language model that never decides — only describes. Went back and tried to break everything already built: found a safety feature that was mathematically <em>incapable</em> of doing what it claimed, under any setting, proven on paper before it was fixed.</p>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">BENCHMARK</span><h3>Put both real claims to a real test</h3><span class="verdict-chip good">two clean findings</span></div>
+        <p>Gave a real, capable LLM a genuinely fair shot at the scoring job — no strawman. A free cloud AI service kept failing under real load no matter what was tried; pivoted entirely to self-hosting on borrowed GPU time instead, which also turned out faster. Then built the "cheating" version of the model — using future information, exactly like the leaderboard winners — to price what playing fair actually costs.</p>
+        <div class="dfig">
+          <div class="f"><div class="fl">specialised model vs. LLM</div><div class="fv">3.65×</div></div>
+          <div class="f"><div class="fl">cost of playing fair</div><div class="fv">~1%</div></div>
+        </div>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">DASHBOARD</span><h3>Built the control room. Broke it on purpose.</h3><span class="verdict-chip good">5 / 5 live</span></div>
+        <p>A real dashboard — not slides. A slider that moves real rupees as you drag it; a live queue that scores real held-out payments in the browser. Used it, rather than trusting it, and found two more real bugs that way: one legitimate decision displaying like a glitch, one view crashing from a missing dependency. Both fixed, both re-verified by using it again.</p>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">DOCS</span><h3>Wrote down what it still can't do</h3><span class="verdict-chip watch">in progress</span></div>
+        <p>The eval report, the honest exception list, the README, the architecture doc — and, in writing them, two more small gaps caught by checking rather than assuming: a claimed plot that had never actually been downloaded, a dependency comment that was quietly wrong. Fixed both, the same way as everything above.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EXHIBIT 03 — THE LEDGER (scoreboard) ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;03</span><h2>The ledger</h2><div class="rule"></div></div>
+    <p>Every row changes exactly one thing from the row above it — so every movement has a provable cause, not a story attached after the fact.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Ver.</th><th>What changed</th><th>PR-AUC</th><th>ROC-AUC</th><th>Δ vs. prior</th></tr></thead>
+        <tbody>
+          <tr><td class="id">V0</td><td>Plain baseline, no engineering</td><td>0.5486</td><td>0.9002</td><td>—</td></tr>
+          <tr><td class="id">V1</td><td>+ customer-history signals</td><td>0.5436</td><td>0.9035</td><td class="neg">−0.0050</td></tr>
+          <tr class="final"><td class="id">V2</td><td>+ fixed an unfair reliability check</td><td>0.5446</td><td>0.9014</td><td class="pos">+0.0010</td></tr>
+          <tr><td class="id">V3</td><td>+ trimmed redundant columns</td><td>0.5469</td><td>0.9058</td><td class="pos">+0.0023</td></tr>
+          <tr><td class="id">V4</td><td>+ automated tuning, 60 trials</td><td>0.5514</td><td>0.9077</td><td class="pos">+0.0045</td></tr>
+          <tr class="final"><td class="id">V5</td><td>+ fixed the probabilities (Platt)</td><td>0.5514</td><td>0.9077</td><td class="pos">±0.0000, error −65%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-note">Random guessing scores ≈0.035 on this measure. Every row is already 15–16× that.</p>
+  </section>
+
+  <!-- ============ EXHIBIT 04 — THE VERDICT (cost model) ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;04</span><h2>The verdict</h2><div class="rule"></div></div>
+    <p>Not a threshold. Every cost term scales with the transaction amount, so the correct action genuinely depends on size — a ₹500 payment and a ₹50,000 payment do not carry the same risk at the same probability. The engine prices all three outcomes for every payment and keeps the cheapest.</p>
+
+    <div class="verdict-block">
+      <div class="figure">₹17.22<span style="font-size:.4em; color:var(--muted);">cr</span></div>
+      <div class="cap">Total value, one untouched test month · 92,427 real transactions</div>
+    </div>
+
+    <div class="outcome-row">
+      <div class="outcome-cell"><div class="t">No system</div><div class="v">₹15.68cr</div></div>
+      <div class="outcome-cell"><div class="t">Naive 0.5 cutoff</div><div class="v">₹16.58cr</div></div>
+      <div class="outcome-cell"><div class="t">Arbiter</div><div class="v" style="color:var(--seal-bright)">₹17.22cr</div></div>
+    </div>
+    <p><strong>+₹1.54 crore against doing nothing. +₹64.3 lakh against the industry-default cutoff.</strong> Measured on one real month, not projected. And <strong>99.95%</strong> of that number is computed directly from real fraud labels — hard, verifiable — not from an assumption that couldn't be checked. Only the step-up band's 0.05% depends on a modeled population rate, stated plainly rather than hidden inside a single confident number.</p>
+  </section>
+
+  <!-- ============ EXHIBIT 05 — TWO THINGS WORTH UNDERSTANDING ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;05</span><h2>Two things worth understanding</h2><div class="rule"></div></div>
+
+    <div class="concept">
+      <h4>Why two different accuracy numbers get reported</h4>
+      <p><strong>PR-AUC</strong> asks: of what got flagged, how much really was fraud — and of all real fraud, how much got caught. <strong>ROC-AUC</strong> asks a gentler question flattered by the fact that fraud is rare; a model can score well on it while still wrongly blocking a large share of the customers it touches, and the number wouldn't show it.</p>
+      <p>Tuned on PR-AUC, the harder one to fool. ROC-AUC reported for context only.</p>
+      <span class="tag">random guess → PR-AUC ≈ 0.035</span>
+    </div>
+    <div class="concept">
+      <h4>Why "no peeking at the future" is the whole argument</h4>
+      <p>A gateway decides <em>now</em>, with zero knowledge of what a customer does next. Any technique quietly using later transactions to help score an earlier one looks brilliant in testing and fails the moment it meets production — because in production, later hasn't happened yet.</p>
+      <p>This is the leaderboard-winning solution's actual mechanism, used on purpose in a file that's already sitting on disk. Exhibit 07 builds the honest version and the cheating version side by side and prices the difference: about 1%. Honesty is nearly free here.</p>
+    </div>
+  </section>
+
+  <!-- ============ EXHIBIT 06 — WOULD YOU TRUST IT ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;06</span><h2>Would you trust it</h2><div class="rule"></div></div>
+    <p>A notebook cannot demonstrate this. A standalone, CPU-only program was built and then broken on purpose, six separate ways, to prove each failure recovers rather than assuming it would.</p>
+
+    <div class="fail-row"><div class="what">MODEL FILE MISSING OR CORRUPT</div><div class="resp">Fails closed to a conservative rule, never silently allows. Verified by deleting the artifact mid-test.</div></div>
+    <div class="fail-row"><div class="what">MODEL LIBRARY VERSION MISMATCH</div><div class="resp">Refuses to score at all rather than silently guess. Verified by deliberately faking a mismatch and confirming the refusal fires.</div></div>
+    <div class="fail-row"><div class="what">LLM UNAVAILABLE, TIMES OUT, OR RETURNS GARBAGE</div><div class="resp">The verdict is unaffected — only the prose degrades to a template. Verified by killing the LLM path and diffing the decisions.</div></div>
+    <div class="fail-row"><div class="what">REQUIRED FEATURE MISSING</div><div class="resp">Widens the step-up band rather than guess. The first design for this was proven, on paper, mathematically incapable of moving anything — rebuilt, then verified the boundary actually moved.</div></div>
+    <div class="fail-row"><div class="what">DUPLICATE / REPLAYED TRANSACTION ID</div><div class="resp">Returns the original verdict, unchanged. Verified: same ID submitted twice, byte-identical result.</div></div>
+    <div class="fail-row"><div class="what">A STORED RECORD IS TAMPERED WITH</div><div class="resp">Re-derives the verdict from its own stored inputs and flags the mismatch — the record is provably honest, not just claimed to be.</div></div>
+
+    <p style="margin-top:28px;"><strong>17 real bugs</strong> caught this way across the build, every one logged as it was found, none of them shipped.</p>
+  </section>
+
+  <!-- ============ EXHIBIT 07 — CROSS-EXAMINATION ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;07</span><h2>Cross-examination</h2><div class="rule"></div></div>
+    <p>The two claims this project actually has to defend, tested rather than asserted.</p>
+
+    <h4 style="margin:8px 0 10px; font-size:1.15rem;">Would an LLM just do this job?</h4>
+    <div class="outcome-row" style="margin-top:14px;">
+      <div class="outcome-cell"><div class="t">XGBoost</div><div class="v">0.5735 <span class="mono" style="font-size:.6em;color:var(--muted)">PR-AUC</span></div></div>
+      <div class="outcome-cell"><div class="t">gpt-oss:20b, fair shot</div><div class="v">0.1571 <span class="mono" style="font-size:.6em;color:var(--muted)">PR-AUC</span></div></div>
+      <div class="outcome-cell"><div class="t">Latency, per call</div><div class="v" style="font-size:1.1rem">µs <span style="color:var(--muted)">vs.</span> 6.7s</div></div>
+    </div>
+    <p>A real, capable model — not a strawman picked to lose — still loses by <strong>3.65×</strong> on accuracy and roughly six orders of magnitude on speed. That's the answer to "where you chose not to use one," measured, not assumed.</p>
+
+    <h4 style="margin:36px 0 10px; font-size:1.15rem;">What does refusing to cheat actually cost?</h4>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Model</th><th>PR-AUC</th><th>ROC-AUC</th></tr></thead>
+        <tbody>
+          <tr><td>Honest, causal, deployable</td><td>0.5446</td><td>0.9014</td></tr>
+          <tr><td>Leaky features (undeployable)</td><td>0.5697</td><td>0.9064</td></tr>
+          <tr class="final"><td>+ leaky post-processing (undeployable)</td><td>0.5512</td><td>0.9152</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px;">Total gap: <strong>+0.0066 PR-AUC</strong> — about 1.2% relative. A genuine surprise found along the way: one of the two leaky techniques actually made PR-AUC <em>worse</em>, not better, for the same reason isotonic calibration did earlier in the build — reported as found, not smoothed into a cleaner-sounding story.</p>
+  </section>
+
+  <!-- ============ EXHIBIT 08 — NOT JUST A NOTEBOOK ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;08</span><h2>Not just a notebook</h2><div class="rule"></div></div>
+    <div class="diff">
+      <div class="col no">
+        <div class="h">The default entry</div>
+        <ul>
+          <li>Trains a model, reports one accuracy score</li>
+          <li>Random train/test split</li>
+          <li>A 50% cutoff, because it's the default</li>
+          <li>No explanation for any single decision</li>
+          <li>Breaks silently if anything fails</li>
+        </ul>
+      </div>
+      <div class="col yes">
+        <div class="h">This docket</div>
+        <ul>
+          <li>Every claim tied to a measured, reproducible number</li>
+          <li>Split by time — no peeking at the future, ever</li>
+          <li>The cutoff is chosen by what loses the least money</li>
+          <li>Every flagged case gets a plain-English reason</li>
+          <li>Degrades on purpose, proven by breaking it</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EXHIBIT 09 — EXHIBIT A: THE TRANSCRIPT ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;09</span><h2>Exhibit A — the transcript</h2><div class="rule"></div></div>
+    <p>Built in direct collaboration with Claude, start to finish. Three excerpts, paraphrased from the real working session, chosen because each one is a moment the reasoning genuinely turned — not because they make the build look effortless.</p>
+
+    <div class="exhibit-card">
+      <div class="tab"><span>Working session · misconception, corrected</span><span>Dashboard build</span></div>
+      <div class="body">
+        <div class="xline"><div class="xwho">Builder</div><div class="xtext user">"Why does Arbiter score better than doing nothing? If everything just gets accepted, the money should be higher, right?"</div></div>
+        <div class="xline"><div class="xwho">Claude</div><div class="xtext">"No system" doesn't mean maximum revenue — it means every fraud attempt also succeeds, unfiltered. A single fraud loss is worth roughly 6× a single genuine sale's profit. The ₹1.54 crore lift isn't new revenue; it's fraud losses that stopped being absorbed blindly.</div></div>
+        <div class="xresolve">Resolved with a worked numeric example, not just an assertion — the builder re-derived the mechanism themselves on the next question.</div>
+      </div>
+    </div>
+
+    <div class="exhibit-card">
+      <div class="tab"><span>Working session · a scope decision, reconsidered</span><span>Kaggle-legal comparison</span></div>
+      <div class="body">
+        <div class="xline"><div class="xwho">Builder</div><div class="xtext user">"Nah, let's not build the leaky comparison model — we already benchmarked the LLM, that feels like enough."</div></div>
+        <div class="xline"><div class="xwho">Claude</div><div class="xtext">Worth reconsidering once: this was marked "protect this, it is the differentiator" at the very start. Without it, "the winner's solution can't ship" stays an assertion instead of a measured number — and the causal feature machinery already exists, so it's hours, not a new subsystem.</div></div>
+        <div class="xresolve">Built anyway. Became Exhibit 07's second finding — the one that actually surprised both of us.</div>
+      </div>
+    </div>
+
+    <div class="exhibit-card">
+      <div class="tab"><span>Working session · a fix that didn't fix it</span><span>LLM benchmark</span></div>
+      <div class="body">
+        <div class="xline"><div class="xwho">Claude</div><div class="xtext">Added exponential backoff after a rate-limit spiral on the cloud LLM benchmark. Resumed the run.</div></div>
+        <div class="xline"><div class="xwho">Result</div><div class="xtext">Still mostly failed — 105 of 119 calls, even with the fix in place and only one process running.</div></div>
+        <div class="xresolve">The right response to a bug isn't always a better fix on the same approach. Abandoned the cloud path entirely, moved the benchmark to Kaggle's own GPU. Clean result within the hour.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CLOSE ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;10</span><h2>Entered into the record, plainly</h2><div class="rule"></div></div>
+    <p><strong>Borrows heavily from the 1st-place IEEE-CIS solution, and says so.</strong> Taken: the identity-key construction, card-level chargeback label semantics, group aggregates as features, time-consistency screening, and the "unseen clients, not time drift" diagnosis. Diverged, deliberately: causal aggregates instead of full-history ones, no future-leaking post-processing, a cost-minimizing objective instead of an AUC-maximizing one, and a three-way verdict instead of a score. Their model wins the raw Kaggle task, by design — different games, see Exhibit 07.</p>
+    <p><strong>What it still can't do, stated rather than buried:</strong> card-level identity reconstruction was attempted and scoped out, not solved. Step-up outcomes are modeled from cited industry rates, not measured on this dataset — quantified at 0.05% of the headline, not hidden. Built on US card-not-present data; the method transfers to Razorpay's UPI-heavy mix, the specific features would need to be re-derived. Full account: the eval report and the docket in the repository.</p>
+  </section>
+
+  <footer>
+    <div class="sign">— entered into the record</div>
+    <div class="meta">ARBITER · TRACK 02, AI RISK MANAGER · RAZORPAY AI BUILDATHON 2026 · DOCKET NO. 02–ARB–2026</div>
+  </footer>
+
+</div>
+
+<script>
+  (function(){
+    var els = document.querySelectorAll('.rv');
+    if (!('IntersectionObserver' in window)) { els.forEach(function(e){ e.classList.add('in'); }); return; }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -8% 0px' });
+    els.forEach(function(e){ io.observe(e); });
+  })();
+</script>

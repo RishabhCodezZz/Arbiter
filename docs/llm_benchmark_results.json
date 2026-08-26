@@ -1,0 +1,25 @@
+{
+  "n_transactions": 200,
+  "is_full_size_sample": true,
+  "n_fraud": 10,
+  "xgboost_pr_auc": 0.5734738535061116,
+  "llm_pr_auc": 0.15711122844149217,
+  "llm_model": "gpt-oss:20b",
+  "llm_source": "kaggle-gpu",
+  "n_llm_failures": 2,
+  "llm_latency_ms": {
+    "median": 6665.82649399993,
+    "mean": 7843.216076383855,
+    "n_calls": 198
+  },
+  "failures": [
+    {
+      "TransactionID": 3542737,
+      "error": "timed out"
+    },
+    {
+      "TransactionID": 3521263,
+      "error": "timed out"
+    }
+  ]
+}

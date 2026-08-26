@@ -1,0 +1,408 @@
+{
+  "n_transactions": 92427,
+  "n_fraud": 3213,
+  "point_estimates_inr": {
+    "no_system": 156775689.59844232,
+    "naive_0.5": 165767532.7619533,
+    "arbiter": 172196098.1403643
+  },
+  "policy_mix_exact": {
+    "allow": 88560,
+    "stepup": 2519,
+    "block": 1348
+  },
+  "false_positive_exact": {
+    "n_block_total": 1348,
+    "n_block_correctly_fraud": 1115,
+    "n_block_false_positive": 233,
+    "false_positive_total_cost_inr": 1796854.4694298543,
+    "false_positive_avg_cost_inr": 7711.8217572096755,
+    "stepup_band_composition": {
+      "n_total": 2519,
+      "n_fraud": 654,
+      "n_genuine": 1865
+    },
+    "note": "block-side counts are exact, real per-transaction outcomes against real labels -- not an estimate. Step-up band composition (who ended up there) is also exact; what WOULD have happened to them (stopped vs got through, abandoned vs completed) remains modeled from population rates (P_STOP/P_DROPOFF), since this dataset has no real step-up interaction data -- unchanged limitation, stated in the honest exception list."
+  },
+  "model_quality": {
+    "pr_auc_point": 0.5513865904621382,
+    "roc_auc_point": 0.9076861131810962,
+    "published_pr_auc": 0.5514,
+    "published_roc_auc": 0.9077,
+    "n_resamples": 2000,
+    "seed": 42,
+    "pr_auc_ci95": [
+      0.5350000980497505,
+      0.5687924980881451
+    ],
+    "roc_auc_ci95": [
+      0.9018526557646876,
+      0.9132449132681201
+    ]
+  },
+  "bootstrap": {
+    "n_resamples": 2000,
+    "seed": 42,
+    "arbiter_ci95_inr": [
+      168566278.41883907,
+      175920085.92717817
+    ],
+    "lift_vs_no_system_ci95_inr": [
+      13757809.190638715,
+      17115095.052426636
+    ],
+    "lift_vs_naive_ci95_inr": [
+      5369555.763991205,
+      7549314.302499773
+    ]
+  },
+  "sensitivity_lift": {
+    "margins": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "fees": [
+      200,
+      350,
+      500,
+      600,
+      1000
+    ],
+    "min_lift_vs_no_system_inr": 10900275.968943238,
+    "min_lift_vs_naive_inr": 5741516.580909073,
+    "n_negative_cells_vs_no_system": 0,
+    "n_negative_cells_vs_naive": 0,
+    "grid": [
+      {
+        "margin": 0.05,
+        "fee": 200,
+        "arbiter_inr": 10886023.084059393,
+        "no_system_inr": -17420753.5535013,
+        "naive_0.5_inr": -6201773.333334346,
+        "lift_vs_no_system_inr": 28306776.637560695,
+        "lift_vs_naive_inr": 17087796.41739374
+      },
+      {
+        "margin": 0.05,
+        "fee": 350,
+        "arbiter_inr": 10769782.869421428,
+        "no_system_inr": -17902703.5535013,
+        "naive_0.5_inr": -6505673.333334346,
+        "lift_vs_no_system_inr": 28672486.42292273,
+        "lift_vs_naive_inr": 17275456.202755775
+      },
+      {
+        "margin": 0.05,
+        "fee": 500,
+        "arbiter_inr": 10658350.215448113,
+        "no_system_inr": -18384653.553501304,
+        "naive_0.5_inr": -6809573.333334345,
+        "lift_vs_no_system_inr": 29043003.76894942,
+        "lift_vs_naive_inr": 17467923.54878246
+      },
+      {
+        "margin": 0.05,
+        "fee": 600,
+        "arbiter_inr": 10575495.255620942,
+        "no_system_inr": -18705953.553501304,
+        "naive_0.5_inr": -7012173.333334345,
+        "lift_vs_no_system_inr": 29281448.809122246,
+        "lift_vs_naive_inr": 17587668.588955287
+      },
+      {
+        "margin": 0.05,
+        "fee": 1000,
+        "arbiter_inr": 10269031.987098973,
+        "no_system_inr": -19991153.5535013,
+        "naive_0.5_inr": -7822573.333334345,
+        "lift_vs_no_system_inr": 30260185.540600274,
+        "lift_vs_naive_inr": 18091605.32043332
+      },
+      {
+        "margin": 0.1,
+        "fee": 200,
+        "arbiter_inr": 65557142.886473015,
+        "no_system_inr": 40966027.49714658,
+        "naive_0.5_inr": 51323928.6984282,
+        "lift_vs_no_system_inr": 24591115.38932644,
+        "lift_vs_naive_inr": 14233214.188044816
+      },
+      {
+        "margin": 0.1,
+        "fee": 350,
+        "arbiter_inr": 65287133.786029875,
+        "no_system_inr": 40484077.49714658,
+        "naive_0.5_inr": 51020028.6984282,
+        "lift_vs_no_system_inr": 24803056.2888833,
+        "lift_vs_naive_inr": 14267105.087601677
+      },
+      {
+        "margin": 0.1,
+        "fee": 500,
+        "arbiter_inr": 64829781.02896383,
+        "no_system_inr": 40002127.49714658,
+        "naive_0.5_inr": 50716128.6984282,
+        "lift_vs_no_system_inr": 24827653.53181725,
+        "lift_vs_naive_inr": 14113652.330535628
+      },
+      {
+        "margin": 0.1,
+        "fee": 600,
+        "arbiter_inr": 64457418.068248995,
+        "no_system_inr": 39680827.49714658,
+        "naive_0.5_inr": 50513528.6984282,
+        "lift_vs_no_system_inr": 24776590.571102418,
+        "lift_vs_naive_inr": 13943889.369820796
+      },
+      {
+        "margin": 0.1,
+        "fee": 1000,
+        "arbiter_inr": 63391392.06026578,
+        "no_system_inr": 38395627.49714658,
+        "naive_0.5_inr": 49703128.6984282,
+        "lift_vs_no_system_inr": 24995764.563119203,
+        "lift_vs_naive_inr": 13688263.36183758
+      },
+      {
+        "margin": 0.15,
+        "fee": 200,
+        "arbiter_inr": 116691273.98397875,
+        "no_system_inr": 99352808.54779445,
+        "naive_0.5_inr": 108849630.73019072,
+        "lift_vs_no_system_inr": 17338465.436184302,
+        "lift_vs_naive_inr": 7841643.253788024
+      },
+      {
+        "margin": 0.15,
+        "fee": 350,
+        "arbiter_inr": 116600517.41079944,
+        "no_system_inr": 98870858.54779445,
+        "naive_0.5_inr": 108545730.73019072,
+        "lift_vs_no_system_inr": 17729658.863004997,
+        "lift_vs_naive_inr": 8054786.68060872
+      },
+      {
+        "margin": 0.15,
+        "fee": 500,
+        "arbiter_inr": 116436032.65289381,
+        "no_system_inr": 98388908.54779445,
+        "naive_0.5_inr": 108241830.73019072,
+        "lift_vs_no_system_inr": 18047124.105099365,
+        "lift_vs_naive_inr": 8194201.922703087
+      },
+      {
+        "margin": 0.15,
+        "fee": 600,
+        "arbiter_inr": 116300382.07971893,
+        "no_system_inr": 98067608.54779445,
+        "naive_0.5_inr": 108039230.73019072,
+        "lift_vs_no_system_inr": 18232773.531924486,
+        "lift_vs_naive_inr": 8261151.349528208
+      },
+      {
+        "margin": 0.15,
+        "fee": 1000,
+        "arbiter_inr": 115819858.33495887,
+        "no_system_inr": 96782408.54779445,
+        "naive_0.5_inr": 107228830.73019072,
+        "lift_vs_no_system_inr": 19037449.78716442,
+        "lift_vs_naive_inr": 8591027.604768142
+      },
+      {
+        "margin": 0.2,
+        "fee": 200,
+        "arbiter_inr": 172672771.2974528,
+        "no_system_inr": 157739589.59844232,
+        "naive_0.5_inr": 166375332.7619533,
+        "lift_vs_no_system_inr": 14933181.699010491,
+        "lift_vs_naive_inr": 6297438.535499513
+      },
+      {
+        "margin": 0.2,
+        "fee": 350,
+        "arbiter_inr": 172435756.90776977,
+        "no_system_inr": 157257639.59844232,
+        "naive_0.5_inr": 166071432.7619533,
+        "lift_vs_no_system_inr": 15178117.309327453,
+        "lift_vs_naive_inr": 6364324.145816475
+      },
+      {
+        "margin": 0.2,
+        "fee": 500,
+        "arbiter_inr": 172196098.1403643,
+        "no_system_inr": 156775689.59844232,
+        "naive_0.5_inr": 165767532.7619533,
+        "lift_vs_no_system_inr": 15420408.541921973,
+        "lift_vs_naive_inr": 6428565.378410995
+      },
+      {
+        "margin": 0.2,
+        "fee": 600,
+        "arbiter_inr": 172058107.5156418,
+        "no_system_inr": 156454389.59844232,
+        "naive_0.5_inr": 165564932.7619533,
+        "lift_vs_no_system_inr": 15603717.917199492,
+        "lift_vs_naive_inr": 6493174.753688514
+      },
+      {
+        "margin": 0.2,
+        "fee": 1000,
+        "arbiter_inr": 171454733.14849252,
+        "no_system_inr": 155169189.59844232,
+        "naive_0.5_inr": 164754532.7619533,
+        "lift_vs_no_system_inr": 16285543.550050199,
+        "lift_vs_naive_inr": 6700200.386539221
+      },
+      {
+        "margin": 0.3,
+        "fee": 200,
+        "arbiter_inr": 287168253.40638745,
+        "no_system_inr": 274513151.699738,
+        "naive_0.5_inr": 281426736.8254784,
+        "lift_vs_no_system_inr": 12655101.706649423,
+        "lift_vs_naive_inr": 5741516.580909073
+      },
+      {
+        "margin": 0.3,
+        "fee": 350,
+        "arbiter_inr": 286889357.398087,
+        "no_system_inr": 274031201.699738,
+        "naive_0.5_inr": 281122836.8254784,
+        "lift_vs_no_system_inr": 12858155.698348999,
+        "lift_vs_naive_inr": 5766520.57260865
+      },
+      {
+        "margin": 0.3,
+        "fee": 500,
+        "arbiter_inr": 286625140.1624951,
+        "no_system_inr": 273549251.699738,
+        "naive_0.5_inr": 280818936.8254784,
+        "lift_vs_no_system_inr": 13075888.462757051,
+        "lift_vs_naive_inr": 5806203.337016702
+      },
+      {
+        "margin": 0.3,
+        "fee": 600,
+        "arbiter_inr": 286474947.36272264,
+        "no_system_inr": 273227951.699738,
+        "naive_0.5_inr": 280616336.8254784,
+        "lift_vs_no_system_inr": 13246995.66298461,
+        "lift_vs_naive_inr": 5858610.53724426
+      },
+      {
+        "margin": 0.3,
+        "fee": 1000,
+        "arbiter_inr": 285777188.23699737,
+        "no_system_inr": 271942751.699738,
+        "naive_0.5_inr": 279805936.8254784,
+        "lift_vs_no_system_inr": 13834436.53725934,
+        "lift_vs_naive_inr": 5971251.411518991
+      },
+      {
+        "margin": 0.4,
+        "fee": 200,
+        "arbiter_inr": 402865804.3097553,
+        "no_system_inr": 391286713.80103385,
+        "naive_0.5_inr": 396478140.8890035,
+        "lift_vs_no_system_inr": 11579090.50872147,
+        "lift_vs_naive_inr": 6387663.42075181
+      },
+      {
+        "margin": 0.4,
+        "fee": 350,
+        "arbiter_inr": 402583768.14817905,
+        "no_system_inr": 390804763.80103385,
+        "naive_0.5_inr": 396174240.8890035,
+        "lift_vs_no_system_inr": 11779004.3471452,
+        "lift_vs_naive_inr": 6409527.259175539
+      },
+      {
+        "margin": 0.4,
+        "fee": 500,
+        "arbiter_inr": 402325270.0878408,
+        "no_system_inr": 390322813.80103385,
+        "naive_0.5_inr": 395870340.8890035,
+        "lift_vs_no_system_inr": 12002456.286806941,
+        "lift_vs_naive_inr": 6454929.19883728
+      },
+      {
+        "margin": 0.4,
+        "fee": 600,
+        "arbiter_inr": 402164038.89042944,
+        "no_system_inr": 390001513.80103385,
+        "naive_0.5_inr": 395667740.8890035,
+        "lift_vs_no_system_inr": 12162525.089395583,
+        "lift_vs_naive_inr": 6496298.001425922
+      },
+      {
+        "margin": 0.4,
+        "fee": 1000,
+        "arbiter_inr": 401446232.9691136,
+        "no_system_inr": 388716313.80103385,
+        "naive_0.5_inr": 394857340.8890035,
+        "lift_vs_no_system_inr": 12729919.168079734,
+        "lift_vs_naive_inr": 6588892.080110073
+      },
+      {
+        "margin": 0.5,
+        "fee": 200,
+        "arbiter_inr": 518960551.8712728,
+        "no_system_inr": 508060275.90232956,
+        "naive_0.5_inr": 511529544.95252854,
+        "lift_vs_no_system_inr": 10900275.968943238,
+        "lift_vs_naive_inr": 7431006.918744266
+      },
+      {
+        "margin": 0.5,
+        "fee": 350,
+        "arbiter_inr": 518673993.98444486,
+        "no_system_inr": 507578325.90232956,
+        "naive_0.5_inr": 511225644.95252854,
+        "lift_vs_no_system_inr": 11095668.082115293,
+        "lift_vs_naive_inr": 7448349.03191632
+      },
+      {
+        "margin": 0.5,
+        "fee": 500,
+        "arbiter_inr": 518404665.86447036,
+        "no_system_inr": 507096375.90232956,
+        "naive_0.5_inr": 510921744.95252854,
+        "lift_vs_no_system_inr": 11308289.962140799,
+        "lift_vs_naive_inr": 7482920.911941826
+      },
+      {
+        "margin": 0.5,
+        "fee": 600,
+        "arbiter_inr": 518225133.61048394,
+        "no_system_inr": 506775075.90232956,
+        "naive_0.5_inr": 510719144.95252854,
+        "lift_vs_no_system_inr": 11450057.70815438,
+        "lift_vs_naive_inr": 7505988.657955408
+      },
+      {
+        "margin": 0.5,
+        "fee": 1000,
+        "arbiter_inr": 517453686.8738095,
+        "no_system_inr": 505489875.90232956,
+        "naive_0.5_inr": 509908744.95252854,
+        "lift_vs_no_system_inr": 11963810.971479952,
+        "lift_vs_naive_inr": 7544941.92128098
+      }
+    ],
+    "note": "Extends the original sensitivity map (which only showed Arbiter's OWN value moving across margin x fee) to confirm the LIFT over both baselines specifically -- previously verified only at the single assumed point (margin=0.20, fee=500)."
+  },
+  "rules_baseline": {
+    "best_threshold_inr": 512535.1682143359,
+    "best_value_inr": 156775689.59844232,
+    "arbiter_lift_over_best_rule_inr": 15420408.541921973,
+    "context_thresholds_inr": {
+      "10000": -684254900.3651264,
+      "50000": -169702426.18577453
+    }
+  }
+}
