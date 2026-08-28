@@ -7,10 +7,11 @@ through, ask for extra verification, or block it. Built solo for Razorpay's AI B
 
 | | |
 |---|---|
-| **Measured lift** | **+₹1.54 crore** vs no fraud system, **+₹64.3 lakh** vs the industry-default 0.5 cutoff, on one untouched test month (92,427 real transactions) — 95% bootstrap CI ₹1.38cr–₹1.71cr, not a lucky month. *(Single-XGBoost baseline; extensively bootstrapped, kept as the historical reference figure.)* |
-| **Shipped model** | A **2-model ensemble** (XGBoost + untuned LightGBM, simple-averaged) — a further, separately confirmed real improvement over the figure above: **+₹13.58 lakh**, 95% bootstrap CI **[+₹6.55L, +₹21.24L]**, test PR-AUC 0.5597. A 3rd model (CatBoost) and further tuning were both tried and empirically rejected — [full evidence trail](docs/experiments.md) |
-| **Model quality** | PR-AUC 0.5514 / ROC-AUC 0.9077 (single-model baseline) — 15.8x random on this dataset's ~3.5% fraud rate |
-| **Honesty check** | 99.95% of the ₹17.22cr single-model headline comes straight from real fraud labels, not a modeled assumption |
+| **Shipped model** | A **2-model ensemble** (XGBoost + untuned LightGBM, simple-averaged after independent calibration) — a 3rd model (CatBoost) and further tuning were both tried and empirically rejected. [Full evidence trail](docs/experiments.md) |
+| **Measured lift** | **+₹1.678 crore** vs no fraud system (95% CI ₹1.510cr–₹1.850cr), **+₹77.03 lakh** vs the industry-default 0.5 cutoff (CI ₹64.9L–₹89.5L), on one untouched test month (92,427 real transactions) — a real, further-confirmed improvement over the single-model baseline (+₹1.54cr / +₹64.3L) |
+| **Model quality** | PR-AUC **0.5597** / ROC-AUC **0.9126** — 16.1x random on this dataset's ~3.5% fraud rate |
+| **False-positive cost** | **223** genuine customers wrongly blocked, exact cost **₹13.20 lakh** — lower than the single model's 233 / ₹17.97L on both counts, found while optimizing for something else entirely |
+| **Honesty check** | 100.16% of the ₹17.355cr headline comes straight from real fraud labels — the modeled step-up component is actually slightly negative, not a rounding artifact |
 | **AI-judgment evidence** | XGBoost beats a real LLM (`gpt-oss:20b`, given a fair shot) by **3.65x** on this task, ~6 orders of magnitude faster per call — [full benchmark](docs/experiments.md) |
 | **Causal-honesty cost** | Refusing to use future information (unlike the original Kaggle-winning solution) costs only **+0.0066 PR-AUC** — honesty is nearly free here |
 
@@ -20,7 +21,7 @@ Full story, in order, including everything that broke: [`journal/`](journal/buil
 
 ## Quickstart
 
-Requires the four trained-model artifacts (not committed to git — see [`artifacts/README.md`](artifacts/README.md) for how to generate and download them from the companion Kaggle notebooks).
+Requires the six trained-model artifacts (not committed to git — see [`artifacts/README.md`](artifacts/README.md) for how to generate and download them from the companion Kaggle notebooks). The shipped model is a 2-model ensemble (XGBoost + LightGBM), so both models' files are required — the engine fails closed if either is missing.
 
 ```bash
 git clone <this-repo-url>
@@ -32,8 +33,9 @@ python -m venv .venv
 # Mac/Linux
 .venv/bin/pip install -r requirements.txt
 
-# Place model.json, calibrator.json, feature_manifest.json, sample_transactions.json
-# into artifacts/ — see artifacts/README.md for exactly how
+# Place model.json, calibrator.json, model_lgb.txt, calibrator_lgb.json,
+# feature_manifest.json, sample_transactions.json into artifacts/ — see
+# artifacts/README.md for exactly how
 
 # Windows
 .venv\Scripts\python scripts\demo_engine.py
@@ -41,9 +43,9 @@ python -m venv .venv
 .venv/bin/python scripts/demo_engine.py
 ```
 
-Expected output: `13/13 checks passed` — idempotency, replay/tamper detection, fail-closed
-behavior, and a live decision on a real held-out transaction, all running on plain CPU, no
-GPU, no training.
+Expected output: `ALL CHECKS PASSED` — idempotency, replay/tamper detection, fail-closed
+behavior, both ensemble members' raw scores in the audit record, and a live decision on a
+real held-out transaction, all running on plain CPU, no GPU, no training.
 
 **Dashboard:** open [`dashboard.html`](dashboard.html) directly in any browser — double-click
 it, or `file://` the path. One self-contained file: PR/cost curves with a live threshold
@@ -80,12 +82,13 @@ and worked numbers: [CLAUDE.md §6](CLAUDE.md#6-architecture).
 | Policy | Total value, test month |
 |---|---|
 | No fraud system | ₹15.68 crore |
-| Naive 0.5 threshold (industry default) | ₹16.58 crore |
-| **Arbiter** | **₹17.22 crore** |
+| Naive 0.5 threshold (industry default) | ₹16.585 crore |
+| **Arbiter (2-model ensemble)** | **₹17.355 crore** |
 
-Policy mix: 95.8% allow, 2.7% step-up, 1.5% block. Full metrics (PR-AUC, ROC-AUC,
+Policy mix: 95.6% allow, 3.0% step-up, 1.4% block. Full metrics (PR-AUC, ROC-AUC,
 precision/recall at the operating threshold, the reliability diagram, sensitivity across
-margin × chargeback-fee assumptions): [`docs/experiments.md`](docs/experiments.md).
+margin × chargeback-fee assumptions): [`docs/eval_report.md`](docs/eval_report.md),
+[`docs/experiments.md`](docs/experiments.md).
 
 ### The two differentiators
 
@@ -120,11 +123,12 @@ Optuna tuning, training         src/features.py  raw txn → model-ready vector
  sample_transactions             src/engine.py    orchestrates all of the above
 ```
 
-Research happens in notebooks (`notebooks/`, numbered, each self-contained, reloads its
-own state); the product is a plain Python package (`src/`) that only ever *loads* a
-trained artifact — it never trains anything, never needs a GPU. This split is itself a
-build-quality signal: a notebook can't demonstrate graceful degradation, an audit trail,
-or "would you trust it."
+Research happens in notebooks (`notebooks/`, numbered, each a self-contained jupytext
+pair — `NN_name.py` source + `NN_name.ipynb` executed with outputs; see
+[`notebooks/README.md`](notebooks/README.md) for the stage-by-stage index); the product
+is a plain Python package (`src/`) that only ever *loads* a trained artifact — it never
+trains anything, never needs a GPU. This split is itself a build-quality signal: a
+notebook can't demonstrate graceful degradation, an audit trail, or "would you trust it."
 
 ### Fallback design, proven not claimed
 
@@ -153,8 +157,9 @@ from reading the code. Full account of every bug found this way (17, across the 
   `docs/experiments.md`.
 - **Step-up outcomes are modeled, not measured.** This dataset has no real record of
   whether a specific step-up challenge actually stopped a fraudster or made a genuine
-  customer abandon — those use cited industry population rates. Stated explicitly: only
-  0.05% of the headline ₹17.22cr depends on this; the rest is hard-computed from real
+  customer abandon — those use cited industry population rates. Stated explicitly: the
+  modeled component is actually *negative* for the shipped ensemble (−0.16% of the
+  headline ₹17.355cr) — more than 100% of the reported value is hard-computed from real
   labels.
 - **Cost parameters are assumptions, sourced but not certain.** Chargeback fee and MDR are
   Razorpay's own disclosed pricing; merchant margin and the LTV penalty for a wrongly
@@ -187,8 +192,8 @@ notebooks/    Kaggle research record — EDA, feature engineering, tuning, cost 
 src/          The product — CPU-only decision engine. store/features/model/policy/
               audit/explain/narrative/engine.
 scripts/      demo_engine.py (proves the engine), llm_benchmark.py (the LLM-vs-XGBoost evidence)
-tests/        36 pytest tests against the real trained model — idempotency, replay/tamper
-              detection, fail-closed paths, cost-model boundaries, every LLM fallback mode
+tests/        41 pytest tests against the real trained ensemble — idempotency, replay/tamper
+              detection, fail-closed paths, both version guards, cost-model boundaries, every LLM fallback mode
 artifacts/    Trained model + calibrator + sample data — not committed, see its README
 dashboard.html  The dashboard — self-contained, open directly in a browser, no server
 docs/         experiments.md (the measured ladder + both evidence experiments), plots,
@@ -202,8 +207,8 @@ PLAN.md       Execution — gates, pass/fail branches, risk register, live statu
 
 1. `python -m venv .venv`, then `.venv\Scripts\pip install -r requirements.txt` (Windows) or `.venv/bin/pip install -r requirements.txt` (Mac/Linux)
 2. Generate the artifacts by running `notebooks/06_cost_model_refined.py` in a Kaggle session (competition data attached, GPU on) and downloading the output files — exact list and destinations in [`artifacts/README.md`](artifacts/README.md). (`notebooks/04_cost_model.py` is the full historical record, including completed one-off diagnostics whose findings already live in `docs/experiments.md` — 06 is the consolidated, going-forward version and produces everything still needed.)
-3. `python scripts/demo_engine.py` — should print `13/13 checks passed`
-4. `pytest tests/` — 36 tests against the real trained model: idempotency, replay/tamper detection, fail-closed behavior, the cost model's decision boundaries, and every LLM fallback path (timeout, garbage response, no API key) exercised without needing a live network call
+3. `python scripts/demo_engine.py` — should print `ALL CHECKS PASSED`
+4. `pytest tests/` — 41 tests against the real trained ensemble: idempotency, replay/tamper detection, fail-closed behavior, both model version guards, the cost model's decision boundaries, and every LLM fallback path (timeout, garbage response, no API key) exercised without needing a live network call
 5. Optional: `python scripts/llm_benchmark.py --kaggle-results artifacts/llm_benchmark_kaggle_results.json` to reproduce the LLM-vs-XGBoost comparison
 6. The dashboard needs no setup at all — open [`dashboard.html`](dashboard.html) directly in a browser
 

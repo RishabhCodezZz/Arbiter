@@ -84,6 +84,14 @@ tried and NOT adopted). Both `model.json`+`model_lgb.txt` and both calibrators a
   on PR-AUC/ROC-AUC, not the rupee value this project actually optimizes for. Also runs a
   direct paired bootstrap of 3-model vs. 2-model rupee value — the one comparison the
   PR-AUC-only analysis couldn't settle.
+- `ensemble_dashboard_headline.json` — readable summary of the two files below, since
+  parsing full curve arrays for a quick number check is annoying.
+- `dashboard_data.json` / `test_month_raw.json` — **as of the ensemble-rebuild addendum,
+  these are OVERWRITTEN with the shipped 2-model ensemble's real data** (PR/ROC/cost
+  curves, policy mix, sensitivity map, and full row-level calibrated probabilities), not
+  the single-model numbers they originally held. Closes exception-list item 10
+  (`docs/eval_report.md`) — `dashboard.html` and `scripts/robustness_checks.py`'s output
+  need to be regenerated from the new copies of these two files to actually reflect this.
 
 Once `model.json`, `calibrator.json`, `model_lgb.txt`, `calibrator_lgb.json`,
 `feature_manifest.json`, and `sample_transactions.json` are all here, run from the repo root:

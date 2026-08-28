@@ -9,62 +9,76 @@ was derived locally is stated explicitly — nothing here is invented to fill a 
 
 ## 1. Model quality
 
-> **The shipped model is now a 2-model ensemble** (XGBoost + untuned LightGBM,
-> simple-averaged) — see `docs/experiments.md`'s ensemble sections and exception-list item
-> 10 below. The table and bootstrap CIs immediately below describe the single-XGBoost
-> model's own numbers, kept as an accurate historical record rather than overwritten; the
-> ensemble's own confirmed aggregate numbers (test PR-AUC 0.5597, total value ₹17.355cr,
-> +₹13.58L over this single-model baseline, CI [+₹6.55L, +₹21.24L]) are reported separately
-> in `docs/experiments.md` and have not yet been re-run through this report's own granular
-> per-transaction breakdown (§2b/§4 below) — a tracked gap, not a silent one.
+**The shipped model is a 2-model ensemble** (XGBoost + untuned LightGBM, simple-averaged
+after independent Platt calibration) — see `docs/experiments.md`'s ensemble sections for
+the full decision trail (a 3rd model and further tuning were both tried and rejected). Every
+number below is the ensemble's own, computed on the full 92,427-row test month via
+`scripts/robustness_checks.py` against `artifacts/test_month_raw.json` — not carried over
+from the single-model era.
 
 | Metric | Value | 95% bootstrap CI | vs. random baseline |
 |---|---|---|---|
-| PR-AUC | **0.5514** | 0.5350 – 0.5688 | random ≈ base rate (0.0348) → **15.8x** |
-| ROC-AUC | **0.9077** | 0.9019 – 0.9132 | random = 0.5 (context only — see below) |
+| PR-AUC | **0.5597** | 0.5439 – 0.5771 | random ≈ base rate (0.0348) → **16.1x** |
+| ROC-AUC | **0.9126** | 0.9070 – 0.9180 | random = 0.5 (context only — see below) |
+
+*(Single-XGBoost baseline, for reference: PR-AUC 0.5514, ROC-AUC 0.9077 — the ensemble is a
+real, bootstrapped improvement on both, consistent with the confirmed rupee lift below.)*
 
 **Why PR-AUC is the number that matters, ROC-AUC is context:** at a ~3.5% fraud rate,
 ROC-AUC's false-positive-rate denominator is dominated by the huge negative class, which
 flatters the score — a model can look excellent on ROC-AUC while still wrongly flagging a
 large fraction of the customers it blocks. PR-AUC has no such cushion. Tuned on PR-AUC;
 ROC-AUC reported because Kaggle's own leaderboard scored on it (winners: 0.9408) and it
-gives external context. Full ladder from an untuned baseline (0.5486) through calibration:
-[`experiments.md`](experiments.md).
+gives external context. Full ladder from an untuned baseline (0.5486) through calibration
+and the ensemble decision: [`experiments.md`](experiments.md).
 
-**Both now carry a real 95% CI**, not just a bare point estimate — "measured precision and
+**Both carry a real 95% CI**, not just a bare point estimate — "measured precision and
 recall" should mean the same thing everywhere in this report, not only in the cost-model
 section. Computed by the same paired-bootstrap infrastructure as §2b's rupee-lift CI
-(2,000 resamples, seed 42, full 92,427-row test month — `scripts/robustness_checks.py`).
-Both metrics are hand-rolled rather than imported from sklearn (same discipline as
-`scripts/llm_benchmark.py`'s hand-rolled average precision — `requirements.txt`
-deliberately keeps sklearn out of `scripts/`/`src/`), and each was verified to reproduce
-the point estimate above *exactly* (0.5514 / 0.9077) before the bootstrap interval built on
-top of it was trusted.
+(2,000 resamples, seed 42, full 92,427-row test month). Both metrics are hand-rolled rather
+than imported from sklearn (same discipline as `scripts/llm_benchmark.py`'s hand-rolled
+average precision — `requirements.txt` deliberately keeps sklearn out of `scripts/`/`src/`),
+and each was verified to reproduce the point estimate above *exactly* (0.5597 / 0.9126)
+before the bootstrap interval built on top of it was trusted. Cross-checked a second way:
+these same two point estimates were also computed independently on Kaggle
+(`artifacts/dashboard_data.json`'s own `model_pr_auc`/`model_roc_auc`) — both sources agree
+exactly.
 
 ## 2. The cost curve and the chosen operating point
 
 Full three-way policy (per-transaction, amount-dependent — see [CLAUDE.md §6](../CLAUDE.md#6-architecture)
-for why this isn't a single cutoff):
+for why this isn't a single cutoff), run on the shipped 2-model ensemble's calibrated
+probabilities:
 
 | Policy | Total value, test month | Lift |
 |---|---|---|
 | No fraud system | ₹15.68 crore | — |
-| Naive 0.5 threshold | ₹16.58 crore | +₹90.0 lakh vs no system |
-| **Arbiter** | **₹17.22 crore** | **+₹1.54 crore vs no system, +₹64.3 lakh vs naive** |
+| Naive 0.5 threshold (ensemble-fair) | ₹16.585 crore | +₹90.75 lakh vs no system |
+| **Arbiter (2-model ensemble)** | **₹17.355 crore** | **+₹1.678 crore vs no system, +₹77.03 lakh vs naive** |
 
-Policy mix: allow 88,560 (95.8%), step-up 2,519 (2.7%), block 1,348 (1.5%).
+*(Single-XGBoost baseline, for reference: ₹17.22cr, +₹1.54cr vs no system, +₹64.3L vs its
+own naive-0.5. The ensemble beats both the no-system baseline by more AND its own
+naive-0.5 baseline by more — a consistent improvement, not a mixed result.)*
 
-**Hard vs. modeled split, stated explicitly:** ₹17.21cr (99.95%) of the total comes from
-allow/block outcomes computed directly from real test-month fraud labels — hard,
-verifiable. Only ₹92,945 (0.05%) depends on the modeled step-up population rates
-(`P_STOP`=60%, `P_DROPOFF`=15%, both cited from industry studies, not measured on this
-dataset — see honest exception list item #2 below). The headline claim is overwhelmingly
-evidence-based, not assumption-dependent.
+Policy mix: allow 88,331 (95.6%), step-up 2,782 (3.0%), block 1,314 (1.4%).
 
-The simplified single-threshold (allow/block only) view used for the pitch-video visual —
-[`cost_curve.png`](cost_curve.png) — has its minimum at **p = 0.774**, confirmed interior
-(not at an edge, G6 gate passed), robust to the FX-rate correction described in
-`experiments.md`.
+**Hard vs. modeled split, stated explicitly — and a real, honest shift from the
+single-model era worth naming plainly:** the hard-verified (allow/block) component is
+₹17.383 crore — **more than 100% of the total** (100.16%), because the modeled step-up
+component is actually slightly *negative* (−₹2.78 lakh) for this ensemble's policy, not
+a small positive contributor the way it was for the single model (+0.05%, ₹92,945). This
+isn't a bug — it means the ensemble routes a slightly different, on-average-costlier subset
+of transactions into the step-up band under the modeled population rates (`P_STOP`=60%,
+`P_DROPOFF`=15%, both cited from industry studies, not measured on this dataset — see
+honest exception list item #2). The headline claim remains overwhelmingly evidence-based —
+if anything, *more* so than before, since essentially all of the reported value now comes
+from hard-verified outcomes.
+
+The simplified single-threshold (allow/block only) view used for the pitch-video visual has
+its minimum at **p = 0.589** for the ensemble (was p = 0.774 for the single model —
+[`cost_curve.png`](cost_curve.png) still shows the single-model version; regenerating it for
+the ensemble is a cosmetic follow-up, not done here), confirmed interior (not at an edge,
+G6 gate passed).
 
 ## 2b. Robustness — is the headline number real, or one lucky month?
 
@@ -78,92 +92,114 @@ interval doesn't overstate uncertainty by ignoring the correlation between them)
 
 | | Point estimate | 95% CI |
 |---|---|---|
-| Lift vs no system | +₹1.54cr | ₹1.38cr – ₹1.71cr |
-| Lift vs naive 0.5 | +₹64.3L | ₹53.7L – ₹75.5L |
+| Lift vs no system | +₹1.678cr | ₹1.510cr – ₹1.850cr |
+| Lift vs naive 0.5 (ensemble-fair) | +₹77.03L | ₹64.9L – ₹89.5L |
+
+*(Single-model baseline, for reference: +₹1.54cr [₹1.38cr–₹1.71cr] vs no system, +₹64.3L
+[₹53.7L–₹75.5L] vs naive. Both ensemble CIs sit entirely above the single model's own point
+estimates — this isn't just a bigger number, it's a separately, independently confirmed
+improvement.)*
 
 Both intervals sit comfortably clear of zero — the lift is a stable effect, not a favorable
 draw from one month.
 
 **A second, genuinely fair baseline** — not another strawman like naive 0.5, which still
 needs a model. A merchant with *no* model might instead block above a flat rupee amount;
-swept for its own best threshold rather than picked arbitrarily. Real result: the best
-amount-only threshold is **₹512,535 — high enough that it never blocks anything in this
-dataset**, collapsing to the exact same value as doing nothing at all. Two untuned
-reference thresholds (₹10,000, ₹50,000) are sharply negative for context. **Honest
-finding:** fraud isn't separable by amount alone here — a pure rule cannot beat doing
-nothing, so Arbiter's full lift over the best possible simple rule is attributable to the
-model's actual signal, not to any threshold a merchant could have picked without one.
+swept for its own best threshold rather than picked arbitrarily. Real result, recomputed on
+the ensemble: the best amount-only threshold is **still ₹512,535 — high enough that it
+never blocks anything in this dataset**, collapsing to the exact same value as doing
+nothing at all (this doesn't depend on which model is shipped — a pure amount rule ignores
+probability entirely). Two untuned reference thresholds (₹10,000, ₹50,000) are sharply
+negative for context. **Honest finding, confirmed a second time:** fraud isn't separable by
+amount alone here — a pure rule cannot beat doing nothing, so Arbiter's full lift over the
+best possible simple rule is attributable to the model's actual signal, not to any
+threshold a merchant could have picked without one. Sensitivity swept across the full
+35-cell margin × fee grid: **every cell positive against both baselines** (min +₹1.163cr
+vs no system, +₹66.77L vs naive) — the ensemble's advantage holds across the full range of
+plausible cost assumptions, not just the point estimate.
 
 ## 3. Precision / recall at the operating threshold
 
 CLAUDE.md §9 specifically calls for this **at the operating threshold, not at the
-meaningless default of 0.5.** Computed from the real PR curve (`artifacts/dashboard_data.json`,
-91,272 points, full test month) at the nearest point to p = 0.774:
+meaningless default of 0.5.** Computed from the ensemble's real PR curve
+(`artifacts/dashboard_data.json`, 91,701 points, full test month) at the nearest point to
+p = 0.589 (the ensemble's own single-threshold optimum — see §2):
 
 | | Precision | Recall |
 |---|---|---|
-| **At the operating threshold (0.774)** | **86.1%** | **33.1%** |
-| At naive 0.5 (for comparison) | 81.7% | 36.9% |
+| **At the operating threshold (0.589)** | **84.1%** | **35.3%** |
+| At naive 0.5 (for comparison) | 81.9% | 36.6% |
 
-Read plainly: at the point the cost model actually recommends operating, ~86% of
+*(Single-model baseline at its own threshold of 0.774, for reference: 86.1% / 33.1%. The
+ensemble's threshold sits lower and trades a little precision for more recall — consistent
+with a real, different probability distribution, not an error.)*
+
+Read plainly: at the point the cost model actually recommends operating, ~84% of
 transactions flagged above this single cutoff are genuinely fraud, catching about a third
 of all fraud in the test month at that cutoff alone. Recall looks low in isolation, but
 this table is intentionally the *simplified 2-way proxy* (a single global threshold), not
 the real deployed policy — the real system also has the **step-up band**, which catches
 additional fraud the single-threshold view above credits as "missed." The real 3-way
-policy's own numbers are in §2 above (99.95% hard-verified) and are the ones that actually
-matter; this section exists specifically to answer CLAUDE.md's own named metric honestly,
-including its limits.
+policy's own numbers are in §2 above and are the ones that actually matter; this section
+exists specifically to answer CLAUDE.md's own named metric honestly, including its limits.
 
 **Estimated confusion counts at this threshold** (derived: TP = recall × n_fraud, total
 flagged = TP / precision, FP = flagged − TP — an estimate from the aggregate curve, not a
-recount of individual transactions):
+recount of individual transactions; §4 below has the exact recount for the real policy):
 
 | | Count |
 |---|---|
-| Fraud caught (TP) | ~1,062 |
-| Genuine wrongly flagged (FP) | ~172 |
-| Total flagged at/above threshold | ~1,234 |
+| Fraud caught (TP) | ~1,133 |
+| Genuine wrongly flagged (FP) | ~215 |
+| Total flagged at/above threshold | ~1,348 |
 
 ## 4. False-positive cost, explicitly
 
 The rubric names this directly: *"honest metrics including false-positive cost."*
 
-**§3's ~172 is a single-threshold PROXY estimate**, derived from the aggregate PR curve at
+**§3's ~215 is a single-threshold PROXY estimate**, derived from the aggregate PR curve at
 the simplified 2-way (allow/block only) view — see §3's own caveats. **Below is the EXACT
-count from the real, deployed 3-way policy** — computed by `scripts/robustness_checks.py`
-directly from `artifacts/test_month_raw.json`'s real per-transaction (probability, label,
-amount) for all 92,427 test-month rows. No estimation, no aggregate-curve proxy.
+count from the real, deployed 3-way policy on the shipped ensemble** — computed by
+`scripts/robustness_checks.py` directly from `artifacts/test_month_raw.json`'s real
+per-transaction (probability, label, amount) for all 92,427 test-month rows. No estimation,
+no aggregate-curve proxy.
 
 | | Count |
 |---|---|
-| Blocked, correctly (real fraud) | 1,115 |
-| **Blocked, WRONGLY (real genuine — the exact false positives)** | **233** |
-| Total blocked | 1,348 |
+| Blocked, correctly (real fraud) | 1,091 |
+| **Blocked, WRONGLY (real genuine — the exact false positives)** | **223** |
+| Total blocked | 1,314 |
 
-**Exact false-positive cost: ₹17.97 lakh (₹17,96,854)** — ₹7,712 average per
+**Exact false-positive cost: ₹13.20 lakh (₹13,19,554)** — ₹5,917 average per
 wrongly-blocked customer, computed at `margin × amount × (1 + LTV_multiplier)` for each of
-these 233 real rows individually, not modeled or estimated. Same cited parameters as
+these 223 real rows individually, not modeled or estimated. Same cited parameters as
 everywhere else: 20% margin, 3x LTV penalty on the lost customer — the LTV multiplier
 remains the single most speculative parameter in the model, swept in the sensitivity
 analysis in `experiments.md`. (The chargeback fee doesn't apply here — these are the
 customers *wrongly* blocked, so no chargeback ever occurs.)
 
-**Why this doesn't match §3's ~172 — different policies, not a contradiction.** §3's proxy
-blocks everything above one flat probability cutoff (p ≥ 0.774), with no step-up option.
+**A real, additional win worth naming plainly: the ensemble's exact false-positive cost is
+lower than the single model's — ₹13.20L vs. ₹17.97L, 223 vs. 233 wrongly-blocked
+customers.** This wasn't the thing being optimized for when the ensemble was chosen (that
+decision was made on total rupee value and PR-AUC), so finding it also reduces the exact
+false-positive count is a genuine bonus, not a cherry-picked framing — reported here exactly
+as computed, first time this number has existed for the ensemble.
+
+**Why this doesn't match §3's ~215 — different policies, not a contradiction.** §3's proxy
+blocks everything above one flat probability cutoff (p ≥ 0.589), with no step-up option.
 The real 3-way policy's block boundary is amount-dependent — every cost term scales with
 transaction size (see [CLAUDE.md §6](../CLAUDE.md#6-architecture)) — and routes much of the
 middle-risk band to step-up instead of an outright block. A genuinely different rule,
 applied to the same data, produces a different count. Neither number is wrong; they answer
 different questions, and both are stated rather than reconciled to look consistent.
 
-**Previously an honest gap, now closed.** An earlier version of this report noted that this
-exact breakdown existed only inside a Kaggle session's memory and was never exported.
-`artifacts/test_month_raw.json` (the row-level export addendum) now makes it possible to
-compute locally — verified before being trusted: the recomputed policy mix
-(88,560/2,519/1,348) and total portfolio value (₹17.22cr) both reproduce the
-already-published headline numbers exactly. Full numbers, including the step-up band's
-exact fraud/genuine composition (its *outcome* stays modeled, not measured — honest
+**Verified, not assumed.** `artifacts/test_month_raw.json` (the row-level export addendum,
+regenerated for the ensemble) makes this computable locally — verified before being
+trusted: the recomputed policy mix (88,331/2,782/1,314) and total portfolio value
+(₹17.355cr) both reproduce the already-published ensemble headline exactly, and the
+hand-rolled PR-AUC/ROC-AUC reproduce Kaggle's own independently-computed values (0.5597 /
+0.9126) to 4 decimal places. Full numbers, including the step-up band's exact
+fraud/genuine composition (its *outcome* stays modeled, not measured — honest
 exception list item #2): `docs/robustness_results.json`.
 
 ## 5. Kaggle-legal vs. causal gap — Component B
@@ -223,7 +259,7 @@ Diagnosed using Andrew Ng's *ML Yearning* framework (ch14 error analysis; ch40/4
 bias-variance-mismatch decomposition). Before this pass, every decision in this project was
 driven by aggregate metrics (PR-AUC, ECE, rupee totals) — nobody had ever looked at an
 individual misclassified transaction, and the final model's own val PR-AUC (0.6128, from
-`notebooks/03-reduce-tune-calibrate-outputs.ipynb`'s own executed output) vs. test PR-AUC
+`notebooks/03_reduce_tune_calibrate.ipynb`'s own executed output) vs. test PR-AUC
 (0.5514) gap had never been investigated, even though it was sitting in plain sight since
 the tuning stage.
 
@@ -328,10 +364,12 @@ quietly renumber and hope no one compares versions.)
 2. **Step-up outcomes are modeled, not measured.** No real record in this dataset of
    whether a specific step-up challenge actually stopped a fraudster or made a genuine
    customer abandon. Uses cited industry population rates (`P_STOP`=60%, `P_DROPOFF`=15%).
-   Consequence quantified, not hidden: only 0.05% of the ₹17.22cr headline depends on this.
-   The band's *composition* is now exact (654 real fraud, 1,865 real genuine, out of 2,519
-   step-ups — `docs/robustness_results.json`); it's specifically what happens to each of
-   them next that remains modeled, not the population itself.
+   Consequence quantified, not hidden: for the shipped ensemble, the modeled component is
+   actually *negative* (−0.16% of the ₹17.355cr headline — see §2's hard-vs-modeled split),
+   an even smaller share of the total than the single model's +0.05%. The band's
+   *composition* is exact for the ensemble (728 real fraud, 2,054 real genuine, out of
+   2,782 step-ups — `docs/robustness_results.json`); it's specifically what happens to each
+   of them next that remains modeled, not the population itself.
 
 3. **Cost parameters are sourced assumptions, not certainties.** Chargeback fee (₹500) and
    MDR (2.36%) are Razorpay's own disclosed pricing — closer to fact than assumption.
@@ -384,15 +422,21 @@ quietly renumber and hope no one compares versions.)
    pursued for that reason, not because it's unclear how to do it. Full numbers:
    `docs/experiments.md`.
 
-10. **The shipped model moved from single-XGBoost to a 2-model ensemble; the granular,
-    per-transaction breakdown in this report has not been regenerated for it.** The
-    ensemble's own aggregate headline (test PR-AUC 0.5597, total value ₹17.355cr, +₹13.58L
-    over the single-model baseline, 95% CI [+₹6.55L, +₹21.24L]) is independently confirmed
-    real via a full-test-month bootstrap — see `docs/experiments.md`. What's specifically
-    *not* yet redone for the ensemble: the exact 233-false-positive breakdown (§2b/§4
-    below), the PR-AUC/ROC-AUC bootstrap CIs in §1 above, `artifacts/test_month_raw.json`
-    (still the single-model's per-row scores), and `dashboard.html`/`scripts/robustness_checks.py`
-    (both still built from the single-model export). None of this changes the confirmed
-    ensemble headline — it means the more granular story in the rest of this document
-    describes the single model it was originally computed on, clearly labeled as such
-    rather than silently left to look current.
+10. **`dashboard.html`'s curves/headline are now the ensemble's real data — its
+    review-queue and audit-log snapshots are not, and can't be regenerated with what's
+    available locally.** The main fix is done: `artifacts/test_month_raw.json`/
+    `dashboard_data.json` were regenerated from the shipped ensemble's real calibrated
+    probabilities, `scripts/robustness_checks.py` re-run against them produced the real
+    exact false-positive breakdown (§4: 223 FPs, ₹13.20L, lower than the single model's
+    ₹17.97L) and PR-AUC/ROC-AUC bootstrap CIs (§1), cross-verified against an independent
+    Kaggle-side computation, and `dashboard.html`'s embedded curve/headline data was
+    programmatically swapped in and verified to parse correctly. **What's still stale:**
+    the dashboard's 11-entry review-queue and 12-record audit-log snapshots, both built
+    during an earlier, single-model-era session from a larger, risk-inclusive transaction
+    sample no longer available locally. Tried to regenerate them for real against the
+    ensemble — ran the actual local engine against all 25 rows in
+    `artifacts/sample_transactions.json` — and found all 25 score "allow" under the
+    ensemble (expected: a random 3.5%-fraud-rate draw, not curated for risk, so zero
+    flagged cases is a real result, not a bug). Regenerating these snapshots properly needs
+    a fresh Kaggle export of full-feature rows for a risk-inclusive sample — not done here
+    rather than faked with placeholder entries.

@@ -3,57 +3,57 @@
   "n_fraud": 3213,
   "point_estimates_inr": {
     "no_system": 156775689.59844232,
-    "naive_0.5": 165767532.7619533,
-    "arbiter": 172196098.1403643
+    "naive_0.5": 165850750.4878341,
+    "arbiter": 173554102.2368142
   },
   "policy_mix_exact": {
-    "allow": 88560,
-    "stepup": 2519,
-    "block": 1348
+    "allow": 88331,
+    "stepup": 2782,
+    "block": 1314
   },
   "false_positive_exact": {
-    "n_block_total": 1348,
-    "n_block_correctly_fraud": 1115,
-    "n_block_false_positive": 233,
-    "false_positive_total_cost_inr": 1796854.4694298543,
-    "false_positive_avg_cost_inr": 7711.8217572096755,
+    "n_block_total": 1314,
+    "n_block_correctly_fraud": 1091,
+    "n_block_false_positive": 223,
+    "false_positive_total_cost_inr": 1319553.6570493793,
+    "false_positive_avg_cost_inr": 5917.280973315602,
     "stepup_band_composition": {
-      "n_total": 2519,
-      "n_fraud": 654,
-      "n_genuine": 1865
+      "n_total": 2782,
+      "n_fraud": 728,
+      "n_genuine": 2054
     },
     "note": "block-side counts are exact, real per-transaction outcomes against real labels -- not an estimate. Step-up band composition (who ended up there) is also exact; what WOULD have happened to them (stopped vs got through, abandoned vs completed) remains modeled from population rates (P_STOP/P_DROPOFF), since this dataset has no real step-up interaction data -- unchanged limitation, stated in the honest exception list."
   },
   "model_quality": {
-    "pr_auc_point": 0.5513865904621382,
-    "roc_auc_point": 0.9076861131810962,
-    "published_pr_auc": 0.5514,
-    "published_roc_auc": 0.9077,
+    "pr_auc_point": 0.5597235156796196,
+    "roc_auc_point": 0.9126366044483618,
+    "published_pr_auc": 0.5597,
+    "published_roc_auc": 0.9126,
     "n_resamples": 2000,
     "seed": 42,
     "pr_auc_ci95": [
-      0.5350000980497505,
-      0.5687924980881451
+      0.5438504924159748,
+      0.577089262698624
     ],
     "roc_auc_ci95": [
-      0.9018526557646876,
-      0.9132449132681201
+      0.9069904001296816,
+      0.9179672993553557
     ]
   },
   "bootstrap": {
     "n_resamples": 2000,
     "seed": 42,
     "arbiter_ci95_inr": [
-      168566278.41883907,
-      175920085.92717817
+      169925961.73196006,
+      177197288.62115267
     ],
     "lift_vs_no_system_ci95_inr": [
-      13757809.190638715,
-      17115095.052426636
+      15096891.494362568,
+      18497050.111424662
     ],
     "lift_vs_naive_ci95_inr": [
-      5369555.763991205,
-      7549314.302499773
+      6485816.078732951,
+      8953983.07746609
     ]
   },
   "sensitivity_lift": {
@@ -73,325 +73,325 @@
       600,
       1000
     ],
-    "min_lift_vs_no_system_inr": 10900275.968943238,
-    "min_lift_vs_naive_inr": 5741516.580909073,
+    "min_lift_vs_no_system_inr": 11628609.925773263,
+    "min_lift_vs_naive_inr": 6677132.900198817,
     "n_negative_cells_vs_no_system": 0,
     "n_negative_cells_vs_naive": 0,
     "grid": [
       {
         "margin": 0.05,
         "fee": 200,
-        "arbiter_inr": 10886023.084059393,
+        "arbiter_inr": 11294996.891390165,
         "no_system_inr": -17420753.5535013,
-        "naive_0.5_inr": -6201773.333334346,
-        "lift_vs_no_system_inr": 28306776.637560695,
-        "lift_vs_naive_inr": 17087796.41739374
+        "naive_0.5_inr": -6338799.376112396,
+        "lift_vs_no_system_inr": 28715750.444891468,
+        "lift_vs_naive_inr": 17633796.26750256
       },
       {
         "margin": 0.05,
         "fee": 350,
-        "arbiter_inr": 10769782.869421428,
+        "arbiter_inr": 11176640.863028582,
         "no_system_inr": -17902703.5535013,
-        "naive_0.5_inr": -6505673.333334346,
-        "lift_vs_no_system_inr": 28672486.42292273,
-        "lift_vs_naive_inr": 17275456.202755775
+        "naive_0.5_inr": -6644349.376112396,
+        "lift_vs_no_system_inr": 29079344.416529883,
+        "lift_vs_naive_inr": 17820990.23914098
       },
       {
         "margin": 0.05,
         "fee": 500,
-        "arbiter_inr": 10658350.215448113,
+        "arbiter_inr": 11061140.477258142,
         "no_system_inr": -18384653.553501304,
-        "naive_0.5_inr": -6809573.333334345,
-        "lift_vs_no_system_inr": 29043003.76894942,
-        "lift_vs_naive_inr": 17467923.54878246
+        "naive_0.5_inr": -6949899.376112396,
+        "lift_vs_no_system_inr": 29445794.030759446,
+        "lift_vs_naive_inr": 18011039.85337054
       },
       {
         "margin": 0.05,
         "fee": 600,
-        "arbiter_inr": 10575495.255620942,
+        "arbiter_inr": 11001383.755251639,
         "no_system_inr": -18705953.553501304,
-        "naive_0.5_inr": -7012173.333334345,
-        "lift_vs_no_system_inr": 29281448.809122246,
-        "lift_vs_naive_inr": 17587668.588955287
+        "naive_0.5_inr": -7153599.376112396,
+        "lift_vs_no_system_inr": 29707337.308752943,
+        "lift_vs_naive_inr": 18154983.131364033
       },
       {
         "margin": 0.05,
         "fee": 1000,
-        "arbiter_inr": 10269031.987098973,
+        "arbiter_inr": 10694401.02350658,
         "no_system_inr": -19991153.5535013,
-        "naive_0.5_inr": -7822573.333334345,
-        "lift_vs_no_system_inr": 30260185.540600274,
-        "lift_vs_naive_inr": 18091605.32043332
+        "naive_0.5_inr": -7968399.376112396,
+        "lift_vs_no_system_inr": 30685554.577007882,
+        "lift_vs_naive_inr": 18662800.399618976
       },
       {
         "margin": 0.1,
         "fee": 200,
-        "arbiter_inr": 65557142.886473015,
+        "arbiter_inr": 65792073.33323802,
         "no_system_inr": 40966027.49714658,
-        "naive_0.5_inr": 51323928.6984282,
-        "lift_vs_no_system_inr": 24591115.38932644,
-        "lift_vs_naive_inr": 14233214.188044816
+        "naive_0.5_inr": 51261417.24520311,
+        "lift_vs_no_system_inr": 24826045.836091444,
+        "lift_vs_naive_inr": 14530656.088034913
       },
       {
         "margin": 0.1,
         "fee": 350,
-        "arbiter_inr": 65287133.786029875,
+        "arbiter_inr": 65463581.47904532,
         "no_system_inr": 40484077.49714658,
-        "naive_0.5_inr": 51020028.6984282,
-        "lift_vs_no_system_inr": 24803056.2888833,
-        "lift_vs_naive_inr": 14267105.087601677
+        "naive_0.5_inr": 50955867.24520311,
+        "lift_vs_no_system_inr": 24979503.98189874,
+        "lift_vs_naive_inr": 14507714.233842209
       },
       {
         "margin": 0.1,
         "fee": 500,
-        "arbiter_inr": 64829781.02896383,
+        "arbiter_inr": 65032409.3522544,
         "no_system_inr": 40002127.49714658,
-        "naive_0.5_inr": 50716128.6984282,
-        "lift_vs_no_system_inr": 24827653.53181725,
-        "lift_vs_naive_inr": 14113652.330535628
+        "naive_0.5_inr": 50650317.24520311,
+        "lift_vs_no_system_inr": 25030281.85510782,
+        "lift_vs_naive_inr": 14382092.10705129
       },
       {
         "margin": 0.1,
         "fee": 600,
-        "arbiter_inr": 64457418.068248995,
+        "arbiter_inr": 64603893.37535606,
         "no_system_inr": 39680827.49714658,
-        "naive_0.5_inr": 50513528.6984282,
-        "lift_vs_no_system_inr": 24776590.571102418,
-        "lift_vs_naive_inr": 13943889.369820796
+        "naive_0.5_inr": 50446617.24520311,
+        "lift_vs_no_system_inr": 24923065.878209487,
+        "lift_vs_naive_inr": 14157276.130152956
       },
       {
         "margin": 0.1,
         "fee": 1000,
-        "arbiter_inr": 63391392.06026578,
+        "arbiter_inr": 63352085.39252128,
         "no_system_inr": 38395627.49714658,
-        "naive_0.5_inr": 49703128.6984282,
-        "lift_vs_no_system_inr": 24995764.563119203,
-        "lift_vs_naive_inr": 13688263.36183758
+        "naive_0.5_inr": 49631817.24520311,
+        "lift_vs_no_system_inr": 24956457.8953747,
+        "lift_vs_naive_inr": 13720268.14731817
       },
       {
         "margin": 0.15,
         "fee": 200,
-        "arbiter_inr": 116691273.98397875,
+        "arbiter_inr": 118099417.45789884,
         "no_system_inr": 99352808.54779445,
-        "naive_0.5_inr": 108849630.73019072,
-        "lift_vs_no_system_inr": 17338465.436184302,
-        "lift_vs_naive_inr": 7841643.253788024
+        "naive_0.5_inr": 108861633.86651859,
+        "lift_vs_no_system_inr": 18746608.910104394,
+        "lift_vs_naive_inr": 9237783.591380253
       },
       {
         "margin": 0.15,
         "fee": 350,
-        "arbiter_inr": 116600517.41079944,
+        "arbiter_inr": 117930592.040248,
         "no_system_inr": 98870858.54779445,
-        "naive_0.5_inr": 108545730.73019072,
-        "lift_vs_no_system_inr": 17729658.863004997,
-        "lift_vs_naive_inr": 8054786.68060872
+        "naive_0.5_inr": 108556083.86651859,
+        "lift_vs_no_system_inr": 19059733.49245356,
+        "lift_vs_naive_inr": 9374508.17372942
       },
       {
         "margin": 0.15,
         "fee": 500,
-        "arbiter_inr": 116436032.65289381,
+        "arbiter_inr": 117883397.74918693,
         "no_system_inr": 98388908.54779445,
-        "naive_0.5_inr": 108241830.73019072,
-        "lift_vs_no_system_inr": 18047124.105099365,
-        "lift_vs_naive_inr": 8194201.922703087
+        "naive_0.5_inr": 108250533.86651859,
+        "lift_vs_no_system_inr": 19494489.201392487,
+        "lift_vs_naive_inr": 9632863.882668346
       },
       {
         "margin": 0.15,
         "fee": 600,
-        "arbiter_inr": 116300382.07971893,
+        "arbiter_inr": 117768646.8761905,
         "no_system_inr": 98067608.54779445,
-        "naive_0.5_inr": 108039230.73019072,
-        "lift_vs_no_system_inr": 18232773.531924486,
-        "lift_vs_naive_inr": 8261151.349528208
+        "naive_0.5_inr": 108046833.86651859,
+        "lift_vs_no_system_inr": 19701038.328396052,
+        "lift_vs_naive_inr": 9721813.009671912
       },
       {
         "margin": 0.15,
         "fee": 1000,
-        "arbiter_inr": 115819858.33495887,
+        "arbiter_inr": 117317343.11961722,
         "no_system_inr": 96782408.54779445,
-        "naive_0.5_inr": 107228830.73019072,
-        "lift_vs_no_system_inr": 19037449.78716442,
-        "lift_vs_naive_inr": 8591027.604768142
+        "naive_0.5_inr": 107232033.86651859,
+        "lift_vs_no_system_inr": 20534934.571822777,
+        "lift_vs_naive_inr": 10085309.253098637
       },
       {
         "margin": 0.2,
         "fee": 200,
-        "arbiter_inr": 172672771.2974528,
+        "arbiter_inr": 173997848.48829156,
         "no_system_inr": 157739589.59844232,
-        "naive_0.5_inr": 166375332.7619533,
-        "lift_vs_no_system_inr": 14933181.699010491,
-        "lift_vs_naive_inr": 6297438.535499513
+        "naive_0.5_inr": 166461850.4878341,
+        "lift_vs_no_system_inr": 16258258.889849246,
+        "lift_vs_naive_inr": 7535998.000457466
       },
       {
         "margin": 0.2,
         "fee": 350,
-        "arbiter_inr": 172435756.90776977,
+        "arbiter_inr": 173764163.3630395,
         "no_system_inr": 157257639.59844232,
-        "naive_0.5_inr": 166071432.7619533,
-        "lift_vs_no_system_inr": 15178117.309327453,
-        "lift_vs_naive_inr": 6364324.145816475
+        "naive_0.5_inr": 166156300.4878341,
+        "lift_vs_no_system_inr": 16506523.764597178,
+        "lift_vs_naive_inr": 7607862.875205398
       },
       {
         "margin": 0.2,
         "fee": 500,
-        "arbiter_inr": 172196098.1403643,
+        "arbiter_inr": 173554102.2368142,
         "no_system_inr": 156775689.59844232,
-        "naive_0.5_inr": 165767532.7619533,
-        "lift_vs_no_system_inr": 15420408.541921973,
-        "lift_vs_naive_inr": 6428565.378410995
+        "naive_0.5_inr": 165850750.4878341,
+        "lift_vs_no_system_inr": 16778412.638371885,
+        "lift_vs_naive_inr": 7703351.748980105
       },
       {
         "margin": 0.2,
         "fee": 600,
-        "arbiter_inr": 172058107.5156418,
+        "arbiter_inr": 173422571.99222815,
         "no_system_inr": 156454389.59844232,
-        "naive_0.5_inr": 165564932.7619533,
-        "lift_vs_no_system_inr": 15603717.917199492,
-        "lift_vs_naive_inr": 6493174.753688514
+        "naive_0.5_inr": 165647050.4878341,
+        "lift_vs_no_system_inr": 16968182.393785834,
+        "lift_vs_naive_inr": 7775521.504394054
       },
       {
         "margin": 0.2,
         "fee": 1000,
-        "arbiter_inr": 171454733.14849252,
+        "arbiter_inr": 172838013.41163206,
         "no_system_inr": 155169189.59844232,
-        "naive_0.5_inr": 164754532.7619533,
-        "lift_vs_no_system_inr": 16285543.550050199,
-        "lift_vs_naive_inr": 6700200.386539221
+        "naive_0.5_inr": 164832250.4878341,
+        "lift_vs_no_system_inr": 17668823.813189745,
+        "lift_vs_naive_inr": 8005762.923797965
       },
       {
         "margin": 0.3,
         "fee": 200,
-        "arbiter_inr": 287168253.40638745,
+        "arbiter_inr": 288339416.6306639,
         "no_system_inr": 274513151.699738,
-        "naive_0.5_inr": 281426736.8254784,
-        "lift_vs_no_system_inr": 12655101.706649423,
-        "lift_vs_naive_inr": 5741516.580909073
+        "naive_0.5_inr": 281662283.73046505,
+        "lift_vs_no_system_inr": 13826264.930925846,
+        "lift_vs_naive_inr": 6677132.900198817
       },
       {
         "margin": 0.3,
         "fee": 350,
-        "arbiter_inr": 286889357.398087,
+        "arbiter_inr": 288152153.3372288,
         "no_system_inr": 274031201.699738,
-        "naive_0.5_inr": 281122836.8254784,
-        "lift_vs_no_system_inr": 12858155.698348999,
-        "lift_vs_naive_inr": 5766520.57260865
+        "naive_0.5_inr": 281356733.73046505,
+        "lift_vs_no_system_inr": 14120951.63749075,
+        "lift_vs_naive_inr": 6795419.6067637205
       },
       {
         "margin": 0.3,
         "fee": 500,
-        "arbiter_inr": 286625140.1624951,
+        "arbiter_inr": 287887573.1818484,
         "no_system_inr": 273549251.699738,
-        "naive_0.5_inr": 280818936.8254784,
-        "lift_vs_no_system_inr": 13075888.462757051,
-        "lift_vs_naive_inr": 5806203.337016702
+        "naive_0.5_inr": 281051183.73046505,
+        "lift_vs_no_system_inr": 14338321.482110381,
+        "lift_vs_naive_inr": 6836389.451383352
       },
       {
         "margin": 0.3,
         "fee": 600,
-        "arbiter_inr": 286474947.36272264,
+        "arbiter_inr": 287710397.59701,
         "no_system_inr": 273227951.699738,
-        "naive_0.5_inr": 280616336.8254784,
-        "lift_vs_no_system_inr": 13246995.66298461,
-        "lift_vs_naive_inr": 5858610.53724426
+        "naive_0.5_inr": 280847483.73046505,
+        "lift_vs_no_system_inr": 14482445.89727199,
+        "lift_vs_naive_inr": 6862913.866544962
       },
       {
         "margin": 0.3,
         "fee": 1000,
-        "arbiter_inr": 285777188.23699737,
+        "arbiter_inr": 287071327.99022704,
         "no_system_inr": 271942751.699738,
-        "naive_0.5_inr": 279805936.8254784,
-        "lift_vs_no_system_inr": 13834436.53725934,
-        "lift_vs_naive_inr": 5971251.411518991
+        "naive_0.5_inr": 280032683.73046505,
+        "lift_vs_no_system_inr": 15128576.290489018,
+        "lift_vs_naive_inr": 7038644.259761989
       },
       {
         "margin": 0.4,
         "fee": 200,
-        "arbiter_inr": 402865804.3097553,
+        "arbiter_inr": 403812638.8387128,
         "no_system_inr": 391286713.80103385,
-        "naive_0.5_inr": 396478140.8890035,
-        "lift_vs_no_system_inr": 11579090.50872147,
-        "lift_vs_naive_inr": 6387663.42075181
+        "naive_0.5_inr": 396862716.9730961,
+        "lift_vs_no_system_inr": 12525925.037678957,
+        "lift_vs_naive_inr": 6949921.865616739
       },
       {
         "margin": 0.4,
         "fee": 350,
-        "arbiter_inr": 402583768.14817905,
+        "arbiter_inr": 403532636.0018802,
         "no_system_inr": 390804763.80103385,
-        "naive_0.5_inr": 396174240.8890035,
-        "lift_vs_no_system_inr": 11779004.3471452,
-        "lift_vs_naive_inr": 6409527.259175539
+        "naive_0.5_inr": 396557166.9730961,
+        "lift_vs_no_system_inr": 12727872.200846374,
+        "lift_vs_naive_inr": 6975469.028784156
       },
       {
         "margin": 0.4,
         "fee": 500,
-        "arbiter_inr": 402325270.0878408,
+        "arbiter_inr": 403251891.44956124,
         "no_system_inr": 390322813.80103385,
-        "naive_0.5_inr": 395870340.8890035,
-        "lift_vs_no_system_inr": 12002456.286806941,
-        "lift_vs_naive_inr": 6454929.19883728
+        "naive_0.5_inr": 396251616.9730961,
+        "lift_vs_no_system_inr": 12929077.648527384,
+        "lift_vs_naive_inr": 7000274.476465166
       },
       {
         "margin": 0.4,
         "fee": 600,
-        "arbiter_inr": 402164038.89042944,
+        "arbiter_inr": 403065391.1151899,
         "no_system_inr": 390001513.80103385,
-        "naive_0.5_inr": 395667740.8890035,
-        "lift_vs_no_system_inr": 12162525.089395583,
-        "lift_vs_naive_inr": 6496298.001425922
+        "naive_0.5_inr": 396047916.9730961,
+        "lift_vs_no_system_inr": 13063877.314156055,
+        "lift_vs_naive_inr": 7017474.142093837
       },
       {
         "margin": 0.4,
         "fee": 1000,
-        "arbiter_inr": 401446232.9691136,
+        "arbiter_inr": 402383592.54372597,
         "no_system_inr": 388716313.80103385,
-        "naive_0.5_inr": 394857340.8890035,
-        "lift_vs_no_system_inr": 12729919.168079734,
-        "lift_vs_naive_inr": 6588892.080110073
+        "naive_0.5_inr": 395233116.9730961,
+        "lift_vs_no_system_inr": 13667278.742692113,
+        "lift_vs_naive_inr": 7150475.570629895
       },
       {
         "margin": 0.5,
         "fee": 200,
-        "arbiter_inr": 518960551.8712728,
+        "arbiter_inr": 519688885.8281028,
         "no_system_inr": 508060275.90232956,
-        "naive_0.5_inr": 511529544.95252854,
-        "lift_vs_no_system_inr": 10900275.968943238,
-        "lift_vs_naive_inr": 7431006.918744266
+        "naive_0.5_inr": 512063150.2157271,
+        "lift_vs_no_system_inr": 11628609.925773263,
+        "lift_vs_naive_inr": 7625735.612375736
       },
       {
         "margin": 0.5,
         "fee": 350,
-        "arbiter_inr": 518673993.98444486,
+        "arbiter_inr": 519408217.04985607,
         "no_system_inr": 507578325.90232956,
-        "naive_0.5_inr": 511225644.95252854,
-        "lift_vs_no_system_inr": 11095668.082115293,
-        "lift_vs_naive_inr": 7448349.03191632
+        "naive_0.5_inr": 511757600.2157271,
+        "lift_vs_no_system_inr": 11829891.147526503,
+        "lift_vs_naive_inr": 7650616.834128976
       },
       {
         "margin": 0.5,
         "fee": 500,
-        "arbiter_inr": 518404665.86447036,
+        "arbiter_inr": 519106547.7178054,
         "no_system_inr": 507096375.90232956,
-        "naive_0.5_inr": 510921744.95252854,
-        "lift_vs_no_system_inr": 11308289.962140799,
-        "lift_vs_naive_inr": 7482920.911941826
+        "naive_0.5_inr": 511452050.2157271,
+        "lift_vs_no_system_inr": 12010171.815475821,
+        "lift_vs_naive_inr": 7654497.502078295
       },
       {
         "margin": 0.5,
         "fee": 600,
-        "arbiter_inr": 518225133.61048394,
+        "arbiter_inr": 518915836.1017346,
         "no_system_inr": 506775075.90232956,
-        "naive_0.5_inr": 510719144.95252854,
-        "lift_vs_no_system_inr": 11450057.70815438,
-        "lift_vs_naive_inr": 7505988.657955408
+        "naive_0.5_inr": 511248350.2157271,
+        "lift_vs_no_system_inr": 12140760.199405015,
+        "lift_vs_naive_inr": 7667485.886007488
       },
       {
         "margin": 0.5,
         "fee": 1000,
-        "arbiter_inr": 517453686.8738095,
+        "arbiter_inr": 518151723.7298674,
         "no_system_inr": 505489875.90232956,
-        "naive_0.5_inr": 509908744.95252854,
-        "lift_vs_no_system_inr": 11963810.971479952,
-        "lift_vs_naive_inr": 7544941.92128098
+        "naive_0.5_inr": 510433550.2157271,
+        "lift_vs_no_system_inr": 12661847.827537835,
+        "lift_vs_naive_inr": 7718173.514140308
       }
     ],
     "note": "Extends the original sensitivity map (which only showed Arbiter's OWN value moving across margin x fee) to confirm the LIFT over both baselines specifically -- previously verified only at the single assumed point (margin=0.20, fee=500)."
@@ -399,7 +399,7 @@
   "rules_baseline": {
     "best_threshold_inr": 512535.1682143359,
     "best_value_inr": 156775689.59844232,
-    "arbiter_lift_over_best_rule_inr": 15420408.541921973,
+    "arbiter_lift_over_best_rule_inr": 16778412.638371885,
     "context_thresholds_inr": {
       "10000": -684254900.3651264,
       "50000": -169702426.18577453

@@ -1218,6 +1218,167 @@ with open("/kaggle/working/artifacts/ensemble_rupee_value.json", "w") as f:
 print("Saved: ensemble_rupee_value.json")
 
 # %% [markdown]
+# ## Ensemble-based dashboard + robustness re-export — closing exception-list item 10
+#
+# WHY: `dashboard.html` and `docs/eval_report.md`'s granular per-transaction breakdown
+# (exact FP count, PR-AUC/ROC-AUC bootstrap CI) were built from the SINGLE-model's
+# `dashboard_data.json`/`test_month_raw.json` — flagged honestly as exception-list item 10,
+# not silently left stale. This closes it: recomputes both files using the SHIPPED 2-model
+# ensemble's calibrated probabilities (`ens2_va`/`ens2_te`), reusing the exact same
+# computation logic as the single-model exports above (same PR/ROC curve construction, same
+# 2-way threshold sweep, same 3-way policy argmax, same sensitivity grid) — only the
+# probability array changes. **OVERWRITES `dashboard_data.json` and `test_month_raw.json`**,
+# since the ensemble IS the shipped model now — the single-model numbers stay preserved as
+# clearly-labeled historical text in the docs, not as a second raw-data file nobody points to.
+#
+# Also recomputes the naive-0.5 baseline on the ENSEMBLE's own probability (the existing
+# CLAUDE.md/eval_report.md naive-0.5 figure used the single model's `cal_te` — kept as that
+# historical number, not silently replaced; this is the separate, ensemble-fair version).
+
+# %%
+# 2-way threshold sweep, ensemble version (mirrors the single-model sweep near the top of
+# this notebook exactly — same formulas, only cal_te -> ens2_te).
+ens_thresholds = np.linspace(0.001, 0.999, 400)
+ens_curve_values = []
+for t in ens_thresholds:
+    blocked = ens2_te >= t
+    val = np.where(
+        blocked,
+        np.where(y_te_arr == 1, 0.0, -(MARGIN * amt_te_inr * (1 + LTV_MULTIPLIER))),
+        np.where(y_te_arr == 1, -(amt_te_inr + CHARGEBACK_FEE + MDR_RATE * amt_te_inr),
+                 MARGIN * amt_te_inr - MDR_RATE * amt_te_inr),
+    )
+    ens_curve_values.append(val.sum())
+ens_curve_values = np.array(ens_curve_values)
+ens_best_idx = ens_curve_values.argmax()
+ens_best_threshold = ens_thresholds[ens_best_idx]
+print(f"ensemble best single threshold: {ens_best_threshold:.3f} "
+      f"(shipped single-model was {best_threshold:.3f})")
+
+# 3-way policy, ensemble version.
+ens_va_allow = value_allow(ens2_te, amt_te_inr)
+ens_va_stepup = value_stepup(ens2_te, amt_te_inr)
+ens_va_block = value_block(ens2_te, amt_te_inr)
+ens_values = np.vstack([ens_va_allow, ens_va_stepup, ens_va_block]).T
+ens_actions = np.argmax(ens_values, axis=1)
+ens_action_names = np.array(["allow", "step-up", "block"])
+ens_counts = pd.Series(ens_action_names[ens_actions]).value_counts()
+print("ensemble policy action distribution on the test month:")
+print(ens_counts)
+
+# Headline, ensemble version.
+ens_hard_mask = ens_actions != 1
+ens_arbiter_value = realized_value(ens_actions, y_te_arr, amt_te_inr).sum()
+ens_arbiter_hard_value = realized_value(ens_actions, y_te_arr, amt_te_inr)[ens_hard_mask].sum()
+ens_arbiter_modeled_value = ens_arbiter_value - ens_arbiter_hard_value
+
+# Naive 0.5 baseline, recomputed on the ENSEMBLE's own probability.
+ens_naive_block = ens2_te >= 0.5
+ens_baseline_naive = np.where(
+    ens_naive_block,
+    np.where(y_te_arr == 1, 0.0, -(MARGIN * amt_te_inr * (1 + LTV_MULTIPLIER))),
+    np.where(y_te_arr == 1, -(amt_te_inr + CHARGEBACK_FEE + MDR_RATE * amt_te_inr),
+             MARGIN * amt_te_inr - MDR_RATE * amt_te_inr),
+).sum()
+
+print(f"\nensemble headline -- total value Rs{ens_arbiter_value:,.0f} "
+      f"(hard Rs{ens_arbiter_hard_value:,.0f}, modeled Rs{ens_arbiter_modeled_value:,.0f})")
+print(f"lift vs no system: Rs{ens_arbiter_value - baseline_noop:,.0f}")
+print(f"lift vs naive 0.5 (ensemble-fair): Rs{ens_arbiter_value - ens_baseline_naive:,.0f}")
+
+# Sensitivity map, ensemble version (same grid, same formulas, ens2_te instead of cal_te).
+ens_sens_results = []
+for m in margins:
+    for f in fees:
+        va_a = ((1 - ens2_te) * (m * amt_te_inr - MDR_RATE * amt_te_inr)
+                - ens2_te * (amt_te_inr + f + MDR_RATE * amt_te_inr))
+        va_s = ((1 - ens2_te) * (1 - P_DROPOFF) * (m * amt_te_inr - MDR_RATE * amt_te_inr)
+                - ens2_te * (1 - P_STOP) * (amt_te_inr + f + MDR_RATE * amt_te_inr))
+        va_b = -(1 - ens2_te) * (m * amt_te_inr * (1 + LTV_MULTIPLIER))
+        v = np.vstack([va_a, va_s, va_b]).T
+        act = np.argmax(v, axis=1)
+        total = realized_value(act, y_te_arr, amt_te_inr, margin=m, fee=f).sum()
+        ens_sens_results.append({"margin": m, "fee": f, "total_value": total})
+ens_sens_df = pd.DataFrame(ens_sens_results)
+ens_pivot = ens_sens_df.pivot(index="margin", columns="fee", values="total_value")
+
+# PR/ROC curves, ensemble version.
+ens_precision, ens_recall, ens_pr_thresholds = precision_recall_curve(y_te_arr, ens2_te)
+ens_fpr, ens_tpr, ens_roc_thresholds = roc_curve(y_te_arr, ens2_te)
+ens_pr_thresholds_padded = np.append(ens_pr_thresholds, 1.0)
+
+ens_pr_auc = float(average_precision_score(y_te_arr, ens2_te))
+ens_roc_auc = float(roc_auc_score(y_te_arr, ens2_te))
+print(f"\nensemble test PR-AUC: {ens_pr_auc:.4f} (shipped 2-model was already confirmed 0.5597)")
+print(f"ensemble test ROC-AUC: {ens_roc_auc:.4f} (not previously separately measured for 2-model)")
+
+ens_dashboard_data = {
+    "pr_curve": {"precision": ens_precision.tolist(), "recall": ens_recall.tolist(),
+                 "thresholds": ens_pr_thresholds_padded.tolist()},
+    "roc_curve": {"fpr": ens_fpr.tolist(), "tpr": ens_tpr.tolist(),
+                  "thresholds": ens_roc_thresholds.tolist()},
+    "cost_curve": {"thresholds": ens_thresholds.tolist(), "values_inr": ens_curve_values.tolist(),
+                   "best_threshold": float(ens_best_threshold)},
+    "headline": {"no_system_inr": float(baseline_noop), "naive_threshold_inr": float(ens_baseline_naive),
+                 "arbiter_inr": float(ens_arbiter_value), "arbiter_hard_inr": float(ens_arbiter_hard_value),
+                 "arbiter_modeled_inr": float(ens_arbiter_modeled_value)},
+    "policy_mix": {k: int(v) for k, v in ens_counts.items()},
+    "policy_bands": [
+        {"amount_inr": demo_amt,
+         "allow_to": float(ps[acts_b == 0].max()) if (acts_b == 0).any() else 0.0,
+         "block_from": float(ps[acts_b == 2].min()) if (acts_b == 2).any() else 1.0}
+        for demo_amt in [500, 2000, 10000, 50000]
+        for ps in [np.linspace(0.001, 0.999, 500)]
+        for vals_b in [np.vstack([value_allow(ps, demo_amt), value_stepup(ps, demo_amt),
+                                   value_block(ps, demo_amt)]).T]
+        for acts_b in [np.argmax(vals_b, axis=1)]
+    ],
+    "sensitivity_map": {"margins": margins, "fees": fees, "grid_inr": ens_pivot.values.tolist(),
+                         "our_assumption": {"margin": 0.20, "fee": 500}},
+    "test_month": {"n_transactions": int(len(y_te_arr)), "n_fraud": int(y_te_arr.sum())},
+    "model_pr_auc": ens_pr_auc,
+    "model_roc_auc": ens_roc_auc,
+    "model_description": "2-model ensemble (XGBoost + untuned LightGBM, simple-averaged)",
+}
+with open("/kaggle/working/artifacts/dashboard_data.json", "w") as f:
+    json.dump(ens_dashboard_data, f)
+print("dashboard_data.json OVERWRITTEN with the shipped ensemble's real data")
+
+ens_test_month_raw = {
+    "calibrated_probability": ens2_te.tolist(),
+    "is_fraud": y_te_arr.astype(int).tolist(),
+    "amount_inr": amt_te_inr.tolist(),
+}
+with open("/kaggle/working/artifacts/test_month_raw.json", "w") as f:
+    json.dump(ens_test_month_raw, f)
+
+# Sanity check, same discipline as the single-model export above.
+_ens_check_total = realized_value(ens_actions, y_te_arr.astype(int), amt_te_inr).sum()
+assert abs(_ens_check_total - ens_arbiter_value) < 1.0, (
+    "ensemble row-level export doesn't reproduce its own headline -- do not trust this "
+    "file until this passes."
+)
+print(f"test_month_raw.json OVERWRITTEN -- sanity check passed, Rs{_ens_check_total:,.0f} "
+      f"reproduces exactly")
+
+with open("/kaggle/working/artifacts/ensemble_dashboard_headline.json", "w") as f:
+    json.dump({
+        "test_pr_auc": ens_pr_auc, "test_roc_auc": ens_roc_auc,
+        "arbiter_inr": float(ens_arbiter_value),
+        "lift_vs_no_system_inr": float(ens_arbiter_value - baseline_noop),
+        "lift_vs_naive_ensemble_fair_inr": float(ens_arbiter_value - ens_baseline_naive),
+        "naive_0.5_ensemble_fair_inr": float(ens_baseline_naive),
+        "policy_mix": {k: int(v) for k, v in ens_counts.items()},
+        "best_single_threshold": float(ens_best_threshold),
+        "note": ("Summary of the two overwritten files (dashboard_data.json, "
+                 "test_month_raw.json), kept separately so the headline numbers are "
+                 "readable without parsing the full curve arrays. naive_threshold_inr "
+                 "here is recomputed on the ENSEMBLE's own probability (>=0.5), not the "
+                 "single-model figure already published in CLAUDE.md/eval_report.md."),
+    }, f, indent=2)
+print("Saved: ensemble_dashboard_headline.json")
+
+# %% [markdown]
 # ## Download instructions
 #
 # In Kaggle's right sidebar: Output panel -> artifacts/ folder -> download each file (or
@@ -1235,6 +1396,9 @@ print("Saved: ensemble_rupee_value.json")
 #   artifacts/ensemble_bootstrap.json
 #   artifacts/diversity_check.json
 #   artifacts/ensemble_rupee_value.json
+#   artifacts/ensemble_dashboard_headline.json
+#   artifacts/dashboard_data.json      (OVERWRITES the single-model version — now the shipped ensemble's data)
+#   artifacts/test_month_raw.json      (OVERWRITES the single-model version — now the shipped ensemble's data)
 #
 # NOTE: this notebook does not regenerate error_analysis_false_positives.json,
 # error_analysis_false_negatives_sample.json, training_dev_gap.json, hyperparam_sweep.json,

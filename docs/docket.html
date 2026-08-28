@@ -210,9 +210,9 @@
     <p class="track mono">solo build · every claim below is measured, not asserted</p>
 
     <div class="ledger-strip">
-      <div class="ledger-cell"><div class="v">+₹1.54cr</div><div class="l">Lift vs. no system</div></div>
-      <div class="ledger-cell"><div class="v">0.5514</div><div class="l">PR-AUC, 15.8× random</div></div>
-      <div class="ledger-cell"><div class="v">99.95%</div><div class="l">Value, hard-verified</div></div>
+      <div class="ledger-cell"><div class="v">+₹1.678cr</div><div class="l">Lift vs. no system</div></div>
+      <div class="ledger-cell"><div class="v">0.5597</div><div class="l">PR-AUC, 16.1× random</div></div>
+      <div class="ledger-cell"><div class="v">100.16%</div><div class="l">Value, hard-verified</div></div>
       <div class="ledger-cell"><div class="v">3.65×</div><div class="l">Beats a real LLM at this job</div></div>
       <div class="ledger-cell"><div class="v">17</div><div class="l">Bugs caught before shipping</div></div>
     </div>
@@ -336,16 +336,16 @@
     <p>Not a threshold. Every cost term scales with the transaction amount, so the correct action genuinely depends on size — a ₹500 payment and a ₹50,000 payment do not carry the same risk at the same probability. The engine prices all three outcomes for every payment and keeps the cheapest.</p>
 
     <div class="verdict-block">
-      <div class="figure">₹17.22<span style="font-size:.4em; color:var(--muted);">cr</span></div>
-      <div class="cap">Total value, one untouched test month · 92,427 real transactions</div>
+      <div class="figure">₹17.355<span style="font-size:.4em; color:var(--muted);">cr</span></div>
+      <div class="cap">Total value, one untouched test month · 92,427 real transactions · 2-model ensemble (XGBoost + LightGBM)</div>
     </div>
 
     <div class="outcome-row">
       <div class="outcome-cell"><div class="t">No system</div><div class="v">₹15.68cr</div></div>
-      <div class="outcome-cell"><div class="t">Naive 0.5 cutoff</div><div class="v">₹16.58cr</div></div>
-      <div class="outcome-cell"><div class="t">Arbiter</div><div class="v" style="color:var(--seal-bright)">₹17.22cr</div></div>
+      <div class="outcome-cell"><div class="t">Naive 0.5 cutoff</div><div class="v">₹16.585cr</div></div>
+      <div class="outcome-cell"><div class="t">Arbiter</div><div class="v" style="color:var(--seal-bright)">₹17.355cr</div></div>
     </div>
-    <p><strong>+₹1.54 crore against doing nothing. +₹64.3 lakh against the industry-default cutoff.</strong> Measured on one real month, not projected. And <strong>99.95%</strong> of that number is computed directly from real fraud labels — hard, verifiable — not from an assumption that couldn't be checked. Only the step-up band's 0.05% depends on a modeled population rate, stated plainly rather than hidden inside a single confident number.</p>
+    <p><strong>+₹1.678 crore against doing nothing. +₹77.03 lakh against the industry-default cutoff.</strong> Measured on one real month, not projected. And <strong>100.16%</strong> of that number is computed directly from real fraud labels — hard, verifiable — not from an assumption that couldn't be checked; the step-up band's modeled contribution is actually slightly negative, not a rounding artifact. A 3rd model and further tuning were both tried and measured to not help — see the journal.</p>
   </section>
 
   <!-- ============ EXHIBIT 05 — TWO THINGS WORTH UNDERSTANDING ============ -->

@@ -27,13 +27,15 @@ someone else's problem.
 Arbiter doesn't output a fraud score. For every payment it computes the real rupee cost of
 three outcomes — allow, step-up (extra verification), block — and picks whichever one
 loses the least money, per transaction, because a ₹500 payment and a ₹50,000 payment don't
-carry the same risk at the same fraud probability. On a real 92,427-transaction held-out
-test month, that reframing is worth a measured **+₹1.54 crore** over running no fraud
-system at all, and **+₹64.3 lakh** over the industry-default 0.5-probability cutoff most
-teams would ship instead — with 99.95% of that number computed directly from real fraud
-labels, not a modeled assumption. Bootstrapped 2,000 times on the same real month: both
-lifts hold at 95% confidence (₹1.38cr–₹1.71cr and ₹53.7L–₹75.5L) — not a favorable draw
-from one lucky month.
+carry the same risk at the same fraud probability. The engine is a 2-model ensemble
+(XGBoost + LightGBM, simple-averaged) — a 3rd model and further tuning were both tried and
+measured to not help, so neither shipped. On a real 92,427-transaction held-out test month,
+that reframing is worth a measured **+₹1.678 crore** over running no fraud system at all,
+and **+₹77.03 lakh** over the industry-default 0.5-probability cutoff most teams would ship
+instead — with 100.16% of that number computed directly from real fraud labels, not a
+modeled assumption (the modeled step-up component is actually slightly negative).
+Bootstrapped 2,000 times on the same real month: both lifts hold at 95% confidence
+(₹1.510cr–₹1.850cr and ₹64.9L–₹89.5L) — not a favorable draw from one lucky month.
 
 That lift isn't available to a simple rule, either. The best possible amount-only
 threshold — swept for its own optimum, not picked arbitrarily — turns out to be high

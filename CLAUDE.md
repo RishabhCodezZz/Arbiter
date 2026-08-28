@@ -174,16 +174,24 @@ Precision/recall/F1 are not the objective. **Expected rupee value** is — compu
 > **Update — the shipped model is now a 2-model ensemble.** Everything in this section
 > describes the single-XGBoost model's own cost-model run, still true as a description of
 > that stage and kept as-is rather than rewritten. The engine now ships XGBoost + untuned
-> LightGBM, simple-averaged — a confirmed, bootstrapped real improvement: total test-month
-> value **₹17.355cr** (2-model), **+₹13.58L over this single-model baseline, 95% CI
-> [+₹6.55L, +₹21.24L]** — see `docs/experiments.md`'s ensemble sections for the full,
-> already-verified evidence trail. The granular numbers below this note (the exact 233-FP
-> breakdown, the PR-AUC/ROC-AUC bootstrap, the naive-0.5 baseline) are computed from
-> `artifacts/test_month_raw.json`/`docs/robustness_results.json`, which reflect the
-> single-model run and have **not yet been regenerated for the ensemble** — a real,
-> tracked gap (exception-list item, `docs/eval_report.md`), not a silent omission. The
-> ensemble's own aggregate headline above is independently confirmed real; this specific
-> granular breakdown is what's still pending.
+> LightGBM, simple-averaged — a confirmed, bootstrapped real improvement, and the full
+> granular breakdown (not just the aggregate) is now regenerated and verified for it, not
+> just tracked as pending:
+>
+> | | Single-model (below, historical) | 2-model ensemble (shipped) |
+> |---|---|---|
+> | Total test-month value | ₹17.22cr | **₹17.355cr** |
+> | Lift vs no system | +₹1.54cr | **+₹1.678cr**, CI [+₹1.510cr, +₹1.850cr] |
+> | Lift vs naive 0.5 | +₹64.3L | **+₹77.03L**, CI [+₹64.9L, +₹89.5L] |
+> | PR-AUC / ROC-AUC | 0.5514 / 0.9077 | **0.5597 / 0.9126** |
+> | Exact false positives | 233, ₹17.97L | **223, ₹13.20L** — lower on both counts |
+> | Hard-verified share | 99.95% | **100.16%** (modeled step-up component is slightly negative) |
+>
+> Full detail, every number cross-verified two independent ways (Kaggle export vs. a fresh
+> local `scripts/robustness_checks.py` run): `docs/eval_report.md` §1–§4,
+> `docs/experiments.md`'s ensemble sections. **The one piece not yet updated: `dashboard.html`**
+> still shows the single-model's numbers, baked in at creation time — exception-list item 10,
+> `docs/eval_report.md`.
 
 **Built and run, `notebooks/04_cost_model.py`. G6 gate PASSED — this is the headline result of the project.**
 

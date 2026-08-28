@@ -569,7 +569,7 @@ Asked it to diagnose the whole project cold. Two real findings, both verified ag
 
 1. **Zero manual error analysis exists anywhere in this project.** Grepped for "error analysis," "misclassified," "eyeball," "inspected" — nothing, despite an unusually rigorous model ladder, calibration comparison, and leaky-vs-causal study. Every decision so far has been aggregate-metric-driven; nobody has ever looked at an individual misclassified transaction.
 
-2. **A real, unexamined val→test gap sitting in the project's own executed notebook output.** Pulled `notebooks/03-reduce-tune-calibrate-outputs.ipynb`'s actual printed cell output for the final V4 refit (fixed hyperparameters, single run, not "best of 60 search trials"): val PR-AUC 0.6128 vs test PR-AUC 0.5514 — an 11% relative drop, never once reported, interpreted, or investigated anywhere in CLAUDE.md/PLAN.md/docs, even though every other table only shows the test number.
+2. **A real, unexamined val→test gap sitting in the project's own executed notebook output.** Pulled `notebooks/03_reduce_tune_calibrate.ipynb`'s actual printed cell output for the final V4 refit (fixed hyperparameters, single run, not "best of 60 search trials"): val PR-AUC 0.6128 vs test PR-AUC 0.5514 — an 11% relative drop, never once reported, interpreted, or investigated anywhere in CLAUDE.md/PLAN.md/docs, even though every other table only shows the test number.
 
 Both are genuine gaps, not manufactured ones — confirmed by reading real files, not by trusting the skill's diagnosis on faith.
 
@@ -1423,3 +1423,135 @@ adding.
 artifact.** 41/41 tests, demo script all-pass, docs honestly reflect what's confirmed vs.
 what's tracked-but-pending. The two remaining project gates, unrelated to any of this, are
 still the pitch video and G10.
+
+## Caught: README's Quickstart still listed only 4 artifact files, out of sync with its own next paragraph
+
+User had edited README.md directly (outside this session's own edits) to describe the
+ensemble in the headline table and the "Expected output" line -- but the Quickstart section
+just above it still said "four trained-model artifacts" and listed only
+model.json/calibrator.json/feature_manifest.json/sample_transactions.json, missing
+model_lgb.txt/calibrator_lgb.json. A fresh clone following that Quickstart exactly would
+fail closed (missing LightGBM artifact), directly contradicting the very next paragraph's
+promised output ("both ensemble members' raw scores in the audit record"). This is exactly
+the G10 failure mode the project treats as non-negotiable -- caught by actually reading the
+file's current state rather than assuming an externally-made edit was complete. Fixed both
+spots (the "four" -> "six" artifacts line, the file list) rather than leaving it inconsistent.
+
+## Closing exception-list item 10 for real — ensemble-based dashboard/robustness re-export
+
+User pushed back: "nothing is updated in the dashboard and many other files" -- correct,
+and exactly the gap already named honestly as item 10 rather than fixed. Scoped it properly
+before writing anything: dashboard.html and the granular per-transaction numbers in
+docs/eval_report.md were built from the SINGLE model's dashboard_data.json/test_month_raw.json
+-- closing this for real needs the ensemble's own full-test-month per-row scores, which
+don't exist locally (only aggregate numbers do).
+
+Built the addendum by reusing, not reinventing: every formula (the 2-way threshold sweep,
+the 3-way policy argmax, the sensitivity grid, the PR/ROC curve construction) already
+exists earlier in the same notebook, proven correct for the single model -- copied that
+logic exactly, swapped cal_te -> ens2_te (the shipped 2-model ensemble's calibrated
+probability, already computed and validated earlier in the same session). Recomputed the
+naive-0.5 baseline on the ENSEMBLE's own probability too, rather than reusing the
+single-model figure under a new label -- kept as a clearly separate, ensemble-fair number,
+not silently substituted for the historical one already published.
+
+Deliberately OVERWRITES dashboard_data.json and test_month_raw.json with the ensemble's
+data, rather than adding new differently-named files -- the ensemble IS the shipped model
+now, so these should be the current numbers; the single-model figures stay preserved as
+text in the docs (already labeled historical) rather than needing a second raw-data file
+nobody points to.
+
+Same sanity-check discipline as every other row-level export this project has ever done:
+recompute the headline total from the raw arrays alone before trusting the file, asserted
+to match to the rupee.
+
+Caught mid-session and did NOT guess: the ensemble's own ROC-AUC (2-model specifically) was
+never separately measured before now -- only the 3-model's 0.9139 existed. This addendum
+computes it for real rather than reusing an adjacent number.
+
+Status: syntax-checked, no variable collisions (all new names ens_-prefixed, checked by
+grep), 41/41 local tests unaffected (notebook-only change). Updated artifacts/README.md to
+describe the overwrite behavior explicitly, so it's not a silent surprise when the files
+change meaning. Awaiting the Kaggle run -- once back, still need to: (1) update
+scripts/robustness_checks.py's hardcoded PUBLISHED_PR_AUC/PUBLISHED_ROC_AUC self-check
+constants to the real ensemble numbers (not guessed -- read from
+ensemble_dashboard_headline.json once downloaded), (2) rerun it locally to regenerate
+docs/robustness_results.json with real ensemble bootstrap CIs and exact FP/FN counts, (3)
+rebuild dashboard.html's embedded data from the new dashboard_data.json, (4) update
+docs/eval_report.md's granular numbers for real, closing exception-list item 10 rather than
+just tracking it.
+
+## Full ensemble-headline closeout — every file checked, checklist-driven
+
+User asked for a thorough, checklist-driven pass: verify the newly-downloaded ensemble
+data, close the dashboard/robustness gap for real, and check every file for the model's
+real numbers -- explicitly flagging the earlier README inconsistency as something not to
+repeat.
+
+Cross-verified the three fresh artifacts (dashboard_data.json, test_month_raw.json,
+ensemble_dashboard_headline.json) against each other before trusting them -- all three
+agree exactly on PR-AUC (0.5597235...), arbiter_inr (Rs173,554,102.24), and policy mix.
+Genuinely high confidence before writing a single doc number.
+
+Updated scripts/robustness_checks.py's hardcoded PUBLISHED_PR_AUC/PUBLISHED_ROC_AUC
+self-check constants to the real ensemble figures (read from the file, not guessed) and
+reran it locally against the new test_month_raw.json -- every internal self-check passed
+(policy mix matched exactly, PR-AUC/ROC-AUC reproduced exactly), producing genuinely new,
+real numbers: exact FP count 223 (down from 233), exact cost Rs13.20L (down from Rs17.97L)
+-- a real, additional win found while optimizing for something else entirely, reported
+honestly as a bonus finding, not framed as if it were the goal.
+
+Caught a real arithmetic error of my OWN mid-edit (wrote "+Rs1.008 crore" for the naive-0.5
+lift when the real number is +Rs90.75L) -- caught it by recomputing from the raw numbers
+before moving on, not by trusting the first draft. Logged here rather than silently fixed,
+same as every other caught mistake this session.
+
+Rewrote docs/eval_report.md SS1-SS4 with the real ensemble numbers (not another callout note
+layered on an unresolved gap -- actual replacement, with the single-model baseline kept as
+a clearly labeled comparison line, not deleted). Updated exception-list item 2 (its cited
+file's numbers had silently changed underneath it when test_month_raw.json was
+overwritten) and item 10 (narrowed from "nothing done" to "the one specific piece not
+done", updated twice across this session as the real state changed).
+
+Updated CLAUDE.md's SS6 callout, README.md's headline table AND its "Results" table AND its
+exception-list summary line, SUBMISSION.md's panel-ready paragraph, and docs/docket.html's
+two headline-reveal sections (the top ledger-strip and "EXHIBIT 04 -- THE VERDICT") --
+deliberately left docket.html's and eval_report.md's HISTORICAL stage-specific numbers
+(the V0-V5 ladder, the calibration-method comparison, the training-dev decomposition, the
+error-analysis export) untouched, matching the discipline used throughout this entire
+session: a number describing a SPECIFIC PAST EXPERIMENT's own result stays as that
+experiment's true result: only numbers presented as "today's headline" get updated.
+
+**Found and fixed a second, more consequential gap of the same shape as the README
+mistake**: dashboard.html's embedded `const DATA` JS blob was correctly swapped (via a
+programmatic, verified replacement, not a hand-typed edit given the blob is ~6MB of
+minified JSON), but the VISIBLE static HTML tiles in the Overview panel (Rs17.22cr, 0.5514,
+policy-mix percentages, etc.) were completely separate, hand-written text -- NOT driven by
+the DATA variable at all. Fixing only the JS blob would have left the page LOOKING
+identical to a viewer despite the underlying data being correct -- exactly the kind of gap
+between "the number exists somewhere in the file" and "what a reader actually sees" that
+the earlier README mistake was also an instance of. Found by explicitly re-grepping the
+static HTML portion separately from the JS blob, not by assuming the JS-level fix was
+sufficient. Fixed both.
+
+**Genuinely tried, not faked, the review-queue/audit-log regeneration**: ran the real local
+engine against all 25 real sample transactions -- result: all 25 score "allow" under the
+ensemble (a real, unsurprising finding given a random 3.5%-fraud-rate draw, not curated for
+risk). Confirmed this isn't fixable with what's available locally (no larger risk-inclusive
+raw-feature sample exists outside Kaggle) rather than either leaving it silently stale or
+fabricating placeholder entries -- documented as a genuinely closed-scope, honestly-tracked
+gap (eval_report.md exception item 10, narrowed a second time).
+
+Real bug caught mid-session, unrelated to any of the above: used a bare `python3` instead
+of the project's `.venv/Scripts/python.exe` for the review-queue regeneration script,
+which picked up a DIFFERENT locally-installed xgboost (3.0.0, not the required 3.2.0) and
+triggered the version-mismatch guard -- correctly, as designed. Diagnosed by checking which
+interpreter actually ran, not by doubting the guard itself.
+
+**Final verification, all green: 41/41 tests, `scripts/demo_engine.py` all-pass,
+`dashboard.html`'s three JS variables all independently confirmed as valid, complete JSON
+(no truncation from the earlier confusing intermediate size check -- verified definitively
+by re-parsing the live file, not trusted from an ambiguous diagnostic number).** Full
+repo-wide grep sweep across every tracked file confirms no remaining "current headline"
+claims still show single-model numbers -- only correctly-preserved historical stage records
+remain, each one checked individually before being left alone.

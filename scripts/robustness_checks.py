@@ -3,13 +3,20 @@ Three robustness checks on the headline cost-model result and the model's own ra
 metrics, run against the REAL, FULL 92,427-row test month (artifacts/test_month_raw.json)
 — not a smaller sample, not a re-derivation with different assumptions.
 
-  1. Exact false-positive/false-negative breakdown of the real 3-way policy. Every prior
-     report of false-positive cost (docs/eval_report.md) came from an aggregate-curve
-     ESTIMATE (~172 wrongly-blocked genuine customers, derived from the single-threshold
-     PR-curve proxy in eval_report.md §3). This recomputes the same per-transaction actions
-     Arbiter actually picks (allow/step-up/block) and counts the real, exact composition of
-     each bucket against real labels — no estimation, no proxy. Cross-checked against the
-     already-published policy mix (88,560/2,519/1,348) before anything built on it is trusted.
+UPDATED for the shipped 2-model ensemble (XGBoost + untuned LightGBM) — test_month_raw.json
+now carries the ensemble's own calibrated probabilities, not the single-model baseline's.
+The single-model numbers this script originally validated (233 FPs, Rs17.97L, PR-AUC
+0.5514/ROC-AUC 0.9077, policy mix 88,560/2,519/1,348) are historical, preserved in
+docs/eval_report.md, not reproduced by a run of this script anymore.
+
+  1. Exact false-positive/false-negative breakdown of the real 3-way policy. The FIRST such
+     report (single-model era) came from an aggregate-curve ESTIMATE (~172 wrongly-blocked
+     genuine customers) that this script replaced with an exact count — see docs/eval_report.md
+     for that history. This recomputes the same per-transaction actions Arbiter actually
+     picks (allow/step-up/block) and counts the real, exact composition of each bucket
+     against real labels — no estimation, no proxy. Cross-checked against the
+     already-published ensemble policy mix (88,331/2,782/1,314) before anything built on it
+     is trusted.
 
   2. Bootstrap confidence interval on the headline rupee lift (already existed). Resamples
      the same month with replacement, PAIRED per resample (Arbiter's total and each
@@ -53,8 +60,12 @@ SEED = 42
 # PR-AUC/ROC-AUC below must reproduce these before the bootstrap CI built on top of them is
 # trusted. Same "does the known-good number still reproduce" discipline used throughout
 # this project (e.g. the row-level export's own self-check in notebook 04).
-PUBLISHED_PR_AUC = 0.5514
-PUBLISHED_ROC_AUC = 0.9077
+# Updated for the shipped 2-model ensemble (XGBoost + untuned LightGBM) — was 0.5514/0.9077
+# for the single-model baseline. Read from artifacts/dashboard_data.json's own
+# model_pr_auc/model_roc_auc, not guessed — that file already reproduced these exactly
+# against the notebook's own in-session computation before being trusted here.
+PUBLISHED_PR_AUC = 0.5597
+PUBLISHED_ROC_AUC = 0.9126
 REPRODUCTION_TOLERANCE = 0.0005
 
 
@@ -185,18 +196,20 @@ def main():
     print(f"  lift vs naive_0.5:  Rs {point['arbiter']-point['naive_0.5']:,.0f}")
 
     # ---- Part 0: exact false-positive/false-negative breakdown of the real 3-way policy ----
-    # Replaces the aggregate-curve ESTIMATE in docs/eval_report.md SS3-4 (~172 false
-    # positives, derived from the single-threshold PR-curve proxy) with an exact count for
-    # the REAL 3-way policy specifically — every mask below is a real per-transaction action
-    # against a real label, not a proxy. Cross-checked against the already-published policy
-    # mix (allow 88,560 / step-up 2,519 / block 1,348) before trusting anything on top of it.
+    # Exact, per-transaction count for the REAL 3-way policy on the shipped 2-model
+    # ensemble — every mask below is a real action against a real label, not a proxy.
+    # Cross-checked against the already-published policy mix from
+    # artifacts/dashboard_data.json (allow 88,331 / step-up 2,782 / block 1,314) before
+    # trusting anything on top of it. (The single-model baseline's mix — allow 88,560 /
+    # step-up 2,519 / block 1,348 — is a different policy on a different probability and
+    # is not expected to match; see docs/eval_report.md for that historical figure.)
     n_allow = int((arbiter_actions == 0).sum())
     n_stepup = int((arbiter_actions == 1).sum())
     n_block = int((arbiter_actions == 2).sum())
     print(f"\nexact policy mix: allow {n_allow:,} ({n_allow/n:.1%}), "
           f"step-up {n_stepup:,} ({n_stepup/n:.1%}), block {n_block:,} ({n_block/n:.1%})")
-    print("  (already-published policy mix: allow 88,560 (95.8%), step-up 2,519 (2.7%), "
-          "block 1,348 (1.5%) -- should match exactly)")
+    print("  (already-published ensemble policy mix: allow 88,331 (95.6%), step-up 2,782 "
+          "(3.0%), block 1,314 (1.4%) -- should match exactly)")
 
     block_mask = arbiter_actions == 2
     block_fraud_mask = block_mask & (y == 1)     # correctly blocked fraud -- real, exact
@@ -220,8 +233,9 @@ def main():
     print(f"  blocked, WRONGLY (real genuine -- the false positives): {n_block_genuine:,}")
     print(f"  exact false-positive cost:             Rs {fp_total_cost_inr:,.0f}  "
           f"(Rs {fp_avg_cost_inr:,.0f} average per wrongly-blocked customer)")
-    print(f"  (docs/eval_report.md's prior ESTIMATE, from the aggregate PR curve: ~172 FPs -- "
-          f"this is the exact real count for the real 3-way policy, not an estimate)")
+    print(f"  (first exact measurement for the shipped ensemble -- the single-model "
+          f"baseline's own exact count was 233 FPs, Rs17.97L, a different policy on a "
+          f"different probability, see docs/eval_report.md)")
     print(f"\n  step-up band composition (exact -- outcome for these txns is still MODELED, "
           f"not measured, per the honest exception list):")
     print(f"    real fraud in the step-up band:    {n_stepup_fraud:,}")
