@@ -128,27 +128,37 @@ Compared against Platt (sigmoid) scaling — a smooth, strictly-increasing curve
 |---|---|---|---|
 | Raw (uncalibrated) | 0.5514 | 0.9077 | 0.0103 |
 | Isotonic | 0.5384 | 0.9073 | 0.0042 |
-| **Platt — FINAL** | **0.5514** | **0.9077** | **0.0036** |
+| **Platt — chosen method** | **0.5514** | **0.9077** | **0.0036** |
 
 Platt matches raw *exactly* on both ranking metrics (proves the ties theory) and **beats isotonic on calibration too** — no trade-off needed at all; it strictly dominates. Note this contradicts our own prior expectation ("Platt is less flexible, may calibrate worse") — worth stating plainly that the prediction was wrong and the measurement corrected it, rather than only reporting predictions that turned out right.
 
 **V5 ships with Platt scaling.** The "monotonic ⇒ ranking preserved" claim in the original notebook comment was imprecise — monotonic only forbids *reversals*; a monotonic function can still be a step function and introduce ties. Fixed the comment in the notebook to say this precisely.
 
-## Cost model result (FINAL)
+## Cost model result — single-XGBoost run (V4/V5 model)
 
-**G6 gate: PASSED.** Single-threshold cost curve has an interior minimum at p=0.774 (not at an edge) — confirmed with the correct FX rate, unchanged from the placeholder-rate run.
+> **This section documents the cost-model run on the single-XGBoost V4/V5 model.** The
+> **shipped model is the 2-model ensemble** (XGBoost + untuned LightGBM); its own numbers
+> supersede these and are in the later section **"Does the PR-AUC win survive contact with
+> the actual cost policy?"** and in `docs/eval_report.md` §1–§4. Quick map: value ₹17.22cr → **₹17.355cr**,
+> lift +₹1.54cr / +₹64.3L → **+₹1.678cr / +₹77.03L**, p=0.774 → **p=0.589**, policy mix
+> 88,560/2,519/1,348 → **88,331/2,782/1,314**, grid mins ₹1.09cr / ₹57.4L → **+₹1.163cr /
+> +₹66.77L**. The cost mechanism, parameter sourcing and FX-correction story below are
+> model-independent.
 
-**Policy mix on the test month (92,427 transactions):** allow 95.8% (88,560) · step-up 2.7% (2,519) · block 1.5% (1,348).
+**G6 gate: PASSED.** Single-threshold cost curve has an interior minimum at p=0.774 for this model (not at an edge) — confirmed with the correct FX rate, unchanged from the placeholder-rate run. (p=0.589 for the shipped ensemble, also interior.)
 
-**Headline result — measured on the untouched test month, real Razorpay MDR + real dated FX rate:**
+**Policy mix on the test month (92,427 transactions), single-XGBoost run:** allow 95.8% (88,560) · step-up 2.7% (2,519) · block 1.5% (1,348). *(Shipped ensemble: allow 95.6% (88,331) · step-up 3.0% (2,782) · block 1.4% (1,314).)*
+
+**Result — measured on the untouched test month, real Razorpay MDR + real dated FX rate:**
 
 | Policy | Total value | Lift vs this |
 |---|---|---|
 | No fraud system at all | ₹15.68 crore | — |
 | Naive 0.5 threshold (industry default) | ₹16.58 crore | +₹90.0 lakh vs no system |
-| **Arbiter (this system)** | **₹17.22 crore** | **+₹1.54 crore vs no system, +₹64.3 lakh vs naive 0.5** |
+| **Arbiter — single-XGBoost run** | **₹17.22 crore** | **+₹1.54 crore vs no system, +₹64.3 lakh vs naive 0.5** |
+| **Arbiter — shipped 2-model ensemble** | **₹17.355 crore** | **+₹1.678 crore vs no system, +₹77.03 lakh vs naive 0.5** |
 
-**Hard vs modeled split:** of Arbiter's ₹17.22 crore, ₹17.21 crore (99.95%) comes from allow/block outcomes computed directly from actual fraud labels — hard, verifiable. Only ₹92,945 (0.05%) depends on the modeled step-up population rates (`P_STOP`, `P_DROPOFF`). The headline claim is overwhelmingly evidence-based, not assumption-dependent.
+**Hard vs modeled split (single-XGBoost run):** of ₹17.22 crore, ₹17.21 crore (99.95%) comes from allow/block outcomes computed directly from actual fraud labels — hard, verifiable. Only ₹92,945 (0.05%) depends on the modeled step-up population rates (`P_STOP`, `P_DROPOFF`). *(For the shipped ensemble the hard-verified share is 100.16% — the modeled step-up component is slightly negative, −₹2.78L.)* The headline claim is overwhelmingly evidence-based, not assumption-dependent.
 
 ### FX rate correction — a real, caught, fixed number
 
@@ -158,9 +168,14 @@ This wasn't cosmetic: `CHARGEBACK_FEE` (₹500) is fixed, not amount-proportiona
 
 ### Known gap — not blocking, tracked for the docs stage
 
-The sensitivity map (margin × chargeback fee, below) shows how Arbiter's *own* total value moves across assumptions. **Extended and closed** (`scripts/robustness_checks.py` Part 3, fully local — reuses `artifacts/test_month_raw.json`, no new Kaggle run needed): the *lift over both baselines* stays positive across the **entire** 35-point grid, not just the assumed 20%/₹500 point — minimum lift vs no system ₹1.09cr, minimum lift vs naive 0.5 ₹57.4L, both at the least favorable corner of the grid (highest fee, lowest margin). No negative cells anywhere. Full grid: `docs/robustness_results.json`.
+The sensitivity map (margin × chargeback fee, below) shows how Arbiter's *own* total value moves across assumptions. **Extended and closed** (`scripts/robustness_checks.py` Part 3, fully local — reuses `artifacts/test_month_raw.json`, no new Kaggle run needed): the *lift over both baselines* stays positive across the **entire** 35-point grid, not just the assumed 20%/₹500 point — minimum lift vs no system ₹1.09cr (single-XGBoost run) / **+₹1.163cr (shipped ensemble)**, minimum lift vs naive 0.5 ₹57.4L / **+₹66.77L (shipped ensemble)**, both at the least favorable corner of the grid (highest fee, lowest margin). No negative cells anywhere. Full grid: `docs/robustness_results.json`.
 
-### Sensitivity map (margin × chargeback fee, Arbiter total value, ₹)
+### Sensitivity map (margin × chargeback fee, Arbiter total value, ₹) — single-XGBoost grid
+
+*(The shipped ensemble's grid was swept the same way; its full 35-cell result lives in
+`docs/robustness_results.json` — every cell positive vs. both baselines, min lift +₹1.163cr
+vs no system / +₹66.77L vs naive. The table below is the single-XGBoost run and
+`docs/sensitivity_map.png` renders that same grid.)*
 
 | margin | fee=200 | fee=350 | fee=500 | fee=600 | fee=1000 |
 |---|---|---|---|---|---|
@@ -203,14 +218,23 @@ rows in a given iteration, then differenced — not bootstrapped independently a
 afterward, which would ignore the correlation between them and overstate the true
 uncertainty.
 
+Single-XGBoost run:
+
 | | Point estimate | 95% CI |
 |---|---|---|
 | Arbiter total value | ₹17.22cr | ₹16.86cr – ₹17.59cr |
 | Lift vs no system | +₹1.54cr | ₹1.38cr – ₹1.71cr |
 | Lift vs naive 0.5 | +₹64.3L | ₹53.7L – ₹75.5L |
 
-Both lift intervals sit comfortably clear of zero. The headline number is a stable effect
-across resamples of the same month, not a favorable draw.
+Shipped 2-model ensemble (re-run for the consistency migration — `docs/eval_report.md` §2b):
+
+| | Point estimate | 95% CI |
+|---|---|---|
+| Lift vs no system | **+₹1.678cr** | ₹1.510cr – ₹1.850cr |
+| Lift vs naive 0.5 | **+₹77.03L** | ₹64.9L – ₹89.5L |
+
+Both lift intervals (either model) sit comfortably clear of zero. The headline number is a
+stable effect across resamples of the same month, not a favorable draw.
 
 ### 2. A genuinely fair rules-based baseline
 
@@ -236,8 +260,8 @@ the false-positive penalty scales with the amount blocked.
 
 **Honest reading, not spun toward the convenient conclusion:** Arbiter's entire measured
 lift over the best possible simple rule is, by construction, identical to its lift over "no
-system at all" (₹1.54cr) — because the best simple rule and no system are the same policy
-here. That's a stronger claim than "beats a mediocre baseline by some margin": no
+system at all" (+₹1.678cr for the shipped ensemble; +₹1.54cr for the single-XGBoost run) —
+because the best simple rule and no system are the same policy here. That's a stronger claim than "beats a mediocre baseline by some margin": no
 non-ML, amount-based business rule can create any value above doing nothing on this data.
 Only the model's actual probability signal can.
 
@@ -245,10 +269,11 @@ Only the model's actual probability signal can.
 
 Every prior report of false-positive cost (`docs/eval_report.md` §3–4) came from an
 aggregate-curve ESTIMATE — ~172 wrongly-blocked genuine customers, derived from the
-single-threshold PR-curve proxy view. `scripts/robustness_checks.py` now recomputes the
+single-threshold PR-curve proxy view. `scripts/robustness_checks.py` recomputes the
 exact per-transaction action Arbiter actually picks for every one of the 92,427 rows and
-counts the real composition against real labels — no estimation, no proxy — cross-checked
-against the already-published policy mix (88,560/2,519/1,348) before being trusted:
+counts the real composition against real labels — no estimation, no proxy.
+
+**Single-XGBoost run** (cross-checked against that model's policy mix 88,560/2,519/1,348):
 
 | | Count |
 |---|---|
@@ -259,6 +284,12 @@ against the already-published policy mix (88,560/2,519/1,348) before being trust
 
 **Exact false-positive cost: ₹17.97 lakh** (₹17,96,854 — ₹7,712 average per wrongly-blocked
 customer), computed row-by-row from `margin × amount × (1 + LTV_multiplier)`, not modeled.
+
+**Shipped 2-model ensemble** (re-run for the consistency migration — full detail in
+`docs/eval_report.md` §4): **223** wrongly-blocked genuine of **1,314** total blocks (1,091
+correct), **exact cost ₹13.20 lakh** (₹5,917 average) — lower than the single model on both
+counts, found while optimising for total rupee value, not for this. Step-up band: 728 real
+fraud, 2,054 real genuine.
 This *doesn't* match §3's ~172 estimate, and it shouldn't — the two answer different
 questions. §3's proxy is a single flat probability cutoff with no step-up option; the real
 3-way policy's block boundary is amount-dependent (every cost term scales with transaction
@@ -280,10 +311,19 @@ metric here follows the same discipline rather than quietly breaking it). Both w
 verified to reproduce the already-published point estimates exactly before the interval
 built on top of them was trusted:
 
+Single-XGBoost run:
+
 | | Point estimate | 95% CI |
 |---|---|---|
 | PR-AUC | 0.5514 | 0.5350 – 0.5688 |
 | ROC-AUC | 0.9077 | 0.9019 – 0.9132 |
+
+Shipped 2-model ensemble (re-run for the consistency migration — `docs/eval_report.md` §1):
+
+| | Point estimate | 95% CI |
+|---|---|---|
+| PR-AUC | **0.5597** | 0.5439 – 0.5771 |
+| ROC-AUC | **0.9126** | 0.9070 – 0.9180 |
 
 "Measured precision and recall" (the track's own words) now means the same thing
 everywhere in this project's reporting, not only in the cost-model section.
@@ -292,6 +332,10 @@ Full numbers, methodology, and the sanity check that reproduces the already-repo
 headline exactly before trusting anything built on top of it: `journal/`, `docs/eval_report.md` §2b.
 
 ## Error analysis and bias/variance/mismatch decomposition (clue skill: Ng's *ML Yearning* ch14/ch40/ch41)
+
+*(Single-XGBoost-era diagnostic — run on the V4/V5 model, not re-run for the shipped
+ensemble. Kept because the mechanism it isolates, temporal mismatch from unseen clients,
+is model-independent.)*
 
 Diagnosed cold, using `notebooks/04_cost_model.py`'s two new addenda. Full narrative and
 reasoning — including why the variance finding below wasn't acted on: `docs/eval_report.md`
@@ -310,7 +354,7 @@ training-dev slice withheld — NOT the shipped artifact: `artifacts/training_de
 Variance gap (train′→training-dev): **−0.1508 PR-AUC**. Mismatch gap
 (training-dev→val): **−0.2247 PR-AUC — the dominant gap, 1.5x variance**. Further mismatch
 (val→test): −0.0614. Diagnostic model's own val/test (0.6110/0.5496) reproduce the shipped
-model's (0.6128/0.5514) within 0.002 — a fair proxy, not a different model's story.
+then-shipped single model's (0.6128/0.5514) within 0.002 — a fair proxy, not a different model's story.
 
 **Error analysis** (233 exact false positives, 100 sampled false negatives of 1,444 total —
 `artifacts/error_analysis_false_positives.json`, `artifacts/error_analysis_false_negatives_sample.json`):
@@ -342,6 +386,10 @@ Not a real signal about the data. Dropped before it was reported anywhere as fac
 
 ## Hyperparameter sweep — revisiting "not retraining" (`artifacts/hyperparam_sweep.json`)
 
+*(Single-XGBoost-era experiment. The base XGBoost model it tested is still one of the two
+members of the shipped ensemble, so the finding — regularizing harder generalizes worse
+here — carries directly.)*
+
 Hypothesis, stated before running: every shipped hyperparameter sits at the more-capacity,
 less-regularized end of Optuna's search range, and Optuna picked them by maximizing *val*
 PR-AUC — which the decomposition above just showed scores 0.2247 higher than test, purely
@@ -368,7 +416,7 @@ story.
 0.03 PR-AUC of control's val score — every config qualified, even "all four combined" at
 0.5872 vs. the 0.5810 floor): **"all four combined."**
 
-**Checked once on test, as confirmation:** PR-AUC **0.5290** vs. the shipped model's
+**Checked once on test, as confirmation:** PR-AUC **0.5290** vs. the then-shipped single model's
 **0.5514** — **−0.0224 (−4.1% relative), a real regression, not a wash.** ROC-AUC moved the
 same direction (0.8999 vs. 0.9077).
 
@@ -391,6 +439,10 @@ clients over time), a property of the problem, not something regularization move
 sweep is now a direct measurement of that, not just a citation of it.
 
 ## Segment-aware calibration (`artifacts/segment_calibration.json`)
+
+*(Single-XGBoost-era experiment — run on the V4/V5 model, not re-run for the shipped
+ensemble. Its conclusion — a bundled 5-segment recalibration isn't worth adopting — is
+model-independent enough to stand.)*
 
 Follow-up on the error-analysis finding above: 189 of the 233 test false positives (81.1%)
 cluster in ProductCD='C'. `decide_action` has no explicit threshold to make segment-aware
@@ -426,8 +478,8 @@ than 'C' saves. **Not adopted — global calibrator stays.**
 **Confound worth naming:** this tested "recalibrate all five segments" as one unit, not
 "recalibrate C alone." A C-only variant (other four segments left on the existing global
 calibrator) might isolate a real, adoptable win — untried here. Not pursued: the total
-effect size on the shipped headline (₹17.22cr) is under 1%, well inside noise relative to
-the bootstrap CI already reported on the rupee lift, so the expected payoff doesn't clear
+effect size on the headline (₹17.355cr for the shipped ensemble) is under 1%, well inside
+noise relative to the bootstrap CI already reported on the rupee lift, so the expected payoff doesn't clear
 the bar for another Kaggle round trip and a re-verification cascade at this point in the
 project.
 
@@ -447,11 +499,11 @@ probabilities. Selection on val only; test checked once as confirmation.
 
 | Model | val PR-AUC | test PR-AUC | val→test drop (relative) |
 |---|---|---|---|
-| XGBoost (shipped) | 0.6128 | 0.5514 | −10.02% |
+| XGBoost (single-model baseline) | 0.6128 | 0.5514 | −10.02% |
 | LightGBM (untuned) | 0.5976 | **0.5541** | **−7.27% (smallest)** |
 | CatBoost (untuned) | 0.6062 | 0.5434 | −10.36% (largest) |
-| 2-model ensemble (XGB+LGB) | 0.6127 | 0.5597 | −8.64% |
-| **3-model ensemble** | **0.6204** | **0.5628** | −9.29% |
+| **2-model ensemble (XGB+LGB) — SHIPPED** | 0.6127 | **0.5597** | −8.64% |
+| 3-model ensemble (not shipped) | **0.6204** | **0.5628** | −9.29% |
 
 **Interesting secondary finding:** LightGBM, with *zero* tuning, both scores highest on test
 of the three individual models AND degrades least from val to test — the opposite of what
@@ -589,11 +641,11 @@ through the exact `value_allow`/`value_stepup`/`value_block`/`realized_value` ma
 already used for the shipped headline number — no retraining, reused already-computed
 calibrated probabilities.
 
-| Policy | Test-month value | Lift vs. shipped | 95% CI |
+| Policy | Test-month value | Lift vs. single-XGBoost | 95% CI |
 |---|---|---|---|
-| Shipped (single XGBoost) | ₹17.220cr | — | — |
-| 2-model ensemble | ₹17.355cr | **+₹13.58L** | **[+₹6.55L, +₹21.24L] — real** |
-| **3-model ensemble** | **₹17.406cr** | **+₹18.65L** | **[+₹10.12L, +₹27.91L] — real** |
+| Single-XGBoost baseline (previously shipped) | ₹17.220cr | — | — |
+| **2-model ensemble — SHIPPED** | **₹17.355cr** | **+₹13.58L** | **[+₹6.55L, +₹21.24L] — real** |
+| 3-model ensemble (not shipped) | ₹17.406cr | **+₹18.65L** | **[+₹10.12L, +₹27.91L] — real** |
 
 **Both ensembles produce a statistically confirmed real rupee lift over the shipped single
 model — the PR-AUC win genuinely survives contact with the actual policy this time**, unlike
@@ -607,9 +659,12 @@ about ₹16,500 out of a ₹1M+ range). **Practically, 3-model is very likely at
 as 2-model and probably somewhat better — but this does not clear the formal significance
 bar**, on the one metric (rupees) that governs every other decision in this project.
 
-**Honest tension worth naming:** the user's decision to ship the 3-model ensemble was made
-on the PR-AUC evidence, before this check ran. This result neither contradicts nor cleanly
-confirms that specific choice — it confirms ensembling itself, and leaves 2-vs-3 model as a
-genuinely close call between a small, not-quite-significant edge (3-model) and lower
-production complexity (2-model, one fewer model to deploy, monitor, and explain via SHAP).
-Revisited explicitly with the user before committing to the rebuild's scope.
+**How this settled the 2-vs-3 question:** an earlier "ship 3-model" lean had been formed on
+the PR-AUC evidence, before this check ran. This result confirms ensembling itself but
+leaves 2-vs-3 a genuinely close call — a small, not-quite-significant edge (3-model) against
+lower production complexity (2-model, one fewer model to deploy, monitor, and explain via
+SHAP). Revisited explicitly rather than proceeding silently: **the final decision was to
+ship the 2-model ensemble** (XGBoost + untuned LightGBM), simplicity as the tiebreaker per
+ML Yearning ch09's optimizing/satisficing framework — when the metric that governs every
+other decision here can't separate two options, fall back to the satisficing constraint.
+The engine was rebuilt around the 2-model ensemble; see PLAN.md §0 / CLAUDE.md §13.

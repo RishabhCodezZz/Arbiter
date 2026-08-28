@@ -220,15 +220,19 @@ wins" story. Full investigation: `experiments.md`.
 
 ## 6. Reliability diagram — before and after calibration
 
+Calibration-method study, run on the single-XGBoost model (the numbers below are that
+model's; the **shipped ensemble applies the same method — each of its two members is
+independently Platt-calibrated** before the two probabilities are averaged):
+
 | Method | PR-AUC | ROC-AUC | ECE |
 |---|---|---|---|
 | Raw (uncalibrated) | 0.5514 | 0.9077 | 0.0103 |
 | Isotonic (tested, rejected) | 0.5384 | 0.9073 | 0.0042 |
-| **Platt (shipped)** | **0.5514** | **0.9077** | **0.0036** |
+| **Platt (chosen method)** | **0.5514** | **0.9077** | **0.0036** |
 
 Platt matches raw ranking exactly (proving the isotonic-ties theory) and beats isotonic's
 own calibration error too — no trade-off, strictly dominant. `docs/reliability_diagram.png`
-is downloaded and committed. (Caught once already: this report briefly repeated CLAUDE.md's
+is the single-model diagram; the ensemble uses two Platt calibrators fit the same way. (Caught once already: this report briefly repeated CLAUDE.md's
 stale claim that the file had already "shipped" before it had actually been downloaded —
 checked the file exists before trusting that, found it didn't at the time, fixed by
 re-running the plotting cell already complete and correct in
@@ -248,20 +252,27 @@ magnitude on latency. This is the direct evidence for the rubric's "where you ch
 use one" line — benchmarked, not assumed. Full saga (a real cloud-API reliability failure,
 the pivot to self-hosting on Kaggle's GPU, both fixed and verified): `journal/`.
 
-Note: 0.5735 here is the XGBoost score on this 200-row *comparison* sample specifically —
-not the same as the 0.5514 headline (§1), which is the full test month. Different sample
-sizes, expected to differ; the 200-row number exists only to be an identical-data
-comparison against the LLM.
+Note: 0.5735 here is the single-XGBoost score on this 200-row *comparison* sample
+specifically — not the same as the §1 headline (0.5597 for the shipped ensemble, 0.5514
+for single XGBoost), which is the full test month. Different sample sizes, expected to
+differ; the 200-row number exists only to be an identical-data comparison against the LLM
+(not re-run for the ensemble — the finding is that a GBDT beats the LLM by multiples, and
+that holds regardless).
 
 ## 8. Error analysis and the val→test gap — why the model behaves the way it does
+
+> **This whole section is a single-XGBoost-era diagnostic.** It was run on the V4/V5 model
+> and has not been re-run for the shipped 2-model ensemble. It is kept because the
+> mechanism it identifies — temporal mismatch from unseen clients — is model-independent
+> and is the reason the ensemble's own val→test drop looks the way it does too.
 
 Diagnosed using Andrew Ng's *ML Yearning* framework (ch14 error analysis; ch40/41
 bias-variance-mismatch decomposition). Before this pass, every decision in this project was
 driven by aggregate metrics (PR-AUC, ECE, rupee totals) — nobody had ever looked at an
-individual misclassified transaction, and the final model's own val PR-AUC (0.6128, from
-`notebooks/03_reduce_tune_calibrate.ipynb`'s own executed output) vs. test PR-AUC
-(0.5514) gap had never been investigated, even though it was sitting in plain sight since
-the tuning stage.
+individual misclassified transaction, and the then-shipped single model's val PR-AUC
+(0.6128, from `notebooks/03_reduce_tune_calibrate.ipynb`'s own executed output) vs. test
+PR-AUC (0.5514) gap had never been investigated, even though it was sitting in plain sight
+since the tuning stage.
 
 ### 8a. Decomposing the gap: variance vs. temporal mismatch
 
@@ -282,8 +293,8 @@ the shipped artifact: `artifacts/training_dev_gap.json`.
 mismatch gap (0.225) is 1.5x the variance gap (0.151), and the largest gap identifies the
 dominant cause. This is a controlled measurement of the project's own borrowed thesis
 ("unseen clients, not time drift" — CLAUDE.md §5), not just a citation of it. The
-diagnostic model's own val/test scores (0.6110/0.5496) land within 0.002 of the shipped
-model's (0.6128/0.5514), confirming the 85%-training-data diagnostic is a fair proxy, not a
+diagnostic model's own val/test scores (0.6110/0.5496) land within 0.002 of the then-shipped
+single model's (0.6128/0.5514), confirming the 85%-training-data diagnostic is a fair proxy, not a
 different model's story.
 
 **Why this isn't being chased with more regularization.** Real variance does exist (15
@@ -292,7 +303,7 @@ problem here, and the largest gap should drive the response. The 60-trial Optuna
 already searched the regularization space (`reg_lambda`, `reg_alpha`, `max_depth`,
 `min_child_weight`) against a genuine validation objective; re-opening tuning this late
 would cascade into re-verifying every downstream artifact (cost model, dashboard, docket,
-audit log, 36 tests) that depends on the current `model.json`, for an uncertain and likely
+audit log, 41 tests) that depends on the model artifact, for an uncertain and likely
 modest payoff against the *smaller* of two measured gaps. The dominant gap — temporal
 mismatch — is a property of the problem (new clients appearing over time), not a model
 defect regularization can fix; the project's existing responses to it (causal per-client
@@ -301,7 +312,8 @@ appropriate mitigations, already in place.
 
 ### 8b. Manual error analysis — where the real mistakes concentrate
 
-Reviewed all 233 exact false positives and a 100-row sample of false negatives (fraud
+Reviewed all 233 exact false positives (single-XGBoost run; the shipped ensemble has 223 —
+this analysis was not re-run for it) and a 100-row sample of false negatives (fraud
 allowed through with zero friction, of 1,444 total real cases) — real raw features and real
 per-row SHAP contributions, exported by a Kaggle addendum, cross-referenced against
 notebook 01's own original EDA (never previously connected to a failure population).
@@ -403,8 +415,8 @@ quietly renumber and hope no one compares versions.)
    of the project's val→test gap is temporal mismatch (22.5pp), which regularization
    cannot fix. Originally reasoned through and left untried; then actually tested with a
    bounded 6-config hyperparameter sweep selecting the most conservative candidate by
-   smallest traindev→val gap, checked once on test: **PR-AUC 0.5290 vs. the shipped
-   model's 0.5514 — a real regression (−0.0224), not an improvement.** The more
+   smallest traindev→val gap, checked once on test: **PR-AUC 0.5290 vs. the then-shipped
+   single model's 0.5514 — a real regression (−0.0224), not an improvement.** The more
    conservative config generalizes worse, not better, confirming rather than merely
    assuming that this gap isn't a regularization problem. Full numbers:
    `docs/experiments.md`.
@@ -417,7 +429,7 @@ quietly renumber and hope no one compares versions.)
    **C-only** recalibration (leaving the other four segments on the existing global
    calibrator, so they can't be made worse) would be a clean, adoptable win. Sized before
    deciding whether to chase it: best case is ~43 fewer wrongly-blocked customers, capped
-   around ₹3-4 lakh — under 0.02% of the ₹17.22cr headline value, an order of magnitude
+   around ₹3-4 lakh — under 0.02% of the ₹17.355cr headline value, an order of magnitude
    below the width of the bootstrap CI already reported on that same headline number. Not
    pursued for that reason, not because it's unclear how to do it. Full numbers:
    `docs/experiments.md`.

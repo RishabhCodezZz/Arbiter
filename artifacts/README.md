@@ -39,15 +39,15 @@ tried and NOT adopted). Both `model.json`+`model_lgb.txt` and both calibrators a
 - `training_dev_gap.json` — the train'/training-dev/val/test PR-AUC and ROC-AUC comparison
   used to decompose the val→test gap (clue skill ch40/41). Comes from a diagnostic-only
   model refit on 85% of the training period, not the shipped artifact.
-- `hyperparam_sweep.json` — a bounded 6-config sweep testing whether the shipped model's
-  low regularization is an artifact of tuning against an inflated validation signal.
-  Selection uses train'/training-dev/val only (never test); test is checked once afterward,
-  as a confirmation. Diagnostic only — adopting the result means a full refit on 100% of
-  `tr` before it could ever replace the shipped `model.json`.
+- `hyperparam_sweep.json` — a bounded 6-config sweep (single-XGBoost-era) testing whether
+  the then-shipped model's low regularization is an artifact of tuning against an inflated
+  validation signal. Selection uses train'/training-dev/val only (never test); test is
+  checked once afterward, as a confirmation. Diagnostic only — result was a regression, not
+  adopted; the base XGBoost is unchanged and is now one of the two ensemble members.
 - `segment_calibration.json` — tests whether a per-ProductCD Platt calibrator (vs. the one
   global calibrator) reduces the false-positive cluster in ProductCD='C' (81.1% of the 233
-  real false positives, per `docs/eval_report.md` §8b), using the shipped model's own raw
-  scores — no retraining, calibration-only. Scoped narrowly to that precision question; the
+  real false positives for the single-XGBoost run, per `docs/eval_report.md` §8b), using
+  that model's own raw scores — no retraining, calibration-only. Scoped narrowly to that precision question; the
   false-negative cluster in ProductCD='W' has an already-proven zero ceiling for any
   threshold/calibration fix and isn't what this tests. Selection on val only, test checked
   once as confirmation.

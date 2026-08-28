@@ -1555,3 +1555,46 @@ by re-parsing the live file, not trusted from an ambiguous diagnostic number).**
 repo-wide grep sweep across every tracked file confirms no remaining "current headline"
 claims still show single-model numbers -- only correctly-preserved historical stage records
 remain, each one checked individually before being left alone.
+
+## Consistency migration — finishing what the "full sweep" claim got ahead of
+
+The previous entry ended by claiming a "full repo-wide grep sweep across every tracked file
+confirms no remaining 'current headline' claims still show single-model numbers." That was
+premature. A fresh audit this session (written up in a temporary `CONSISTENCY_AUDIT.md`,
+since deleted) found single-XGBoost numbers still standing as the current headline in:
+`PLAN.md` (§0 status rows, the G6 gate row and its narrative, the robustness-checks row,
+the sensitivity-grid minimums, `pytest 36/36`, a dangling `REBUILD_CHECKLIST.md` ref, a
+stale `🟡 awaiting a Kaggle run` prefix); `CLAUDE.md` §6 body ("this is the headline result
+of the project" with ₹17.22cr / 233 / 0.5514) plus a §6 callout line that was now literally
+false ("dashboard.html still shows the single-model's numbers" — it doesn't), §10 and §13;
+`docs/experiments.md` (the primary "Cost model result (FINAL)" section, the robustness
+tables, the policy-mix line, a leftover "the user's decision to ship the 3-model ensemble"
+that contradicts the actual 2-model ship); `docs/docket.html` (the Exhibit-02 COST MODEL
+entry styled and chipped as a live headline showing ₹17.22cr, next to the cover's
+₹1.678cr). README / SUBMISSION / eval_report §1–4 / architecture / dashboard were genuinely
+done — the earlier claim over-generalised from those.
+
+What this pass did (approach chosen deliberately over a blind find-replace):
+- **Current-state claims** → replaced outright with the ensemble numbers (₹17.355cr,
+  +₹1.678cr / +₹77.03L, PR-AUC 0.5597 / ROC-AUC 0.9126, 223 FPs / ₹13.20L, p=0.589,
+  84.1%/35.3%, 41 tests).
+- **Build-history records** (PLAN §0/gates, CLAUDE §13, experiments.md's measured ladder +
+  cost-model-run section, docket Exhibit 02/03) → kept the stage number as the true record
+  of that stage, with a short `(ensemble: X)` note or a labelled second row. Overwriting
+  them would have made CLAUDE/PLAN contradict this journal, and would have broken the
+  isotonic-calibration and hyperparameter-sweep findings, which are stated *relative to*
+  0.5514 as the baseline.
+- Added a **V6 row** to the docket ladder so it ends on the shipped 0.5597 / 0.9126.
+- Added an "Ensemble-numbers migration" row to CLAUDE §13, and single-XGBoost-era callout
+  notes to the error-analysis / hyperparameter-sweep / segment-calibration sections that
+  were never re-run for the ensemble.
+- Disclosed (not regenerated — needs Kaggle) that `docs/cost_curve.png`,
+  `docs/sensitivity_map.png` and `docs/reliability_diagram.png` are the single-model
+  versions; each now says so in the text next to it.
+- Deleted `CONSISTENCY_AUDIT.md` once the migration was done — same "temp tracking doc,
+  remove when its job is finished" logic used for `REBUILD_CHECKLIST.md` earlier.
+
+Verified after: `pytest tests/` and `python scripts/demo_engine.py` both still green
+(no code touched, docs only), and a repeat grep sweep — this time actually complete —
+shows every remaining single-model number is inside an explicitly-labelled historical
+stage record.

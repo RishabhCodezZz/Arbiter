@@ -270,17 +270,17 @@
         <div class="dhead"><span class="dtag">TUNING</span><h3>Trimmed, tuned, then caught its own probabilities lying</h3><span class="verdict-chip good">two real wins</span></div>
         <p>Cut 339 near-duplicate columns to 279 with no loss. An automated 60-trial search beat hand-picked settings. Then: the standard calibration technique quietly collapsed 91,271 distinct scores down to 323, blurring together transactions the model could tell apart. Caught because the drop was too large to be noise; a gentler method fixed the probabilities without touching the ranking at all.</p>
         <div class="dfig">
-          <div class="f"><div class="fl">PR-AUC</div><div class="fv">0.5514</div></div>
+          <div class="f"><div class="fl">PR-AUC (V4/V5)</div><div class="fv">0.5514</div></div>
           <div class="f"><div class="fl">probability error</div><div class="fv">0.0103 → 0.0036</div></div>
         </div>
       </div>
       <div class="dentry">
         <div class="dhead"><span class="dtag">COST MODEL</span><h3>Priced every decision in real rupees</h3><span class="verdict-chip good">headline result</span></div>
-        <p>The actual thesis. Chargeback fee and processing fee sourced from Razorpay's own disclosed pricing, checked directly rather than assumed. Two mistakes caught before trusting the number: the dataset's amounts are in dollars, and the first currency conversion was an unchecked guess. Both fixed. Ran on 92,427 untouched test-month transactions.</p>
+        <p>The actual thesis. Chargeback fee and processing fee sourced from Razorpay's own disclosed pricing, checked directly rather than assumed. Two mistakes caught before trusting the number: the dataset's amounts are in dollars, and the first currency conversion was an unchecked guess. Both fixed. Ran on 92,427 untouched test-month transactions — first with the single XGBoost model (₹17.22cr), then re-run for the shipped 2-model ensemble.</p>
         <div class="dfig">
           <div class="f"><div class="fl">no system</div><div class="fv">₹15.68cr</div></div>
-          <div class="f"><div class="fl">naive 0.5</div><div class="fv">₹16.58cr</div></div>
-          <div class="f"><div class="fl">Arbiter</div><div class="fv" style="color:var(--seal-bright)">₹17.22cr</div></div>
+          <div class="f"><div class="fl">naive 0.5</div><div class="fv">₹16.585cr</div></div>
+          <div class="f"><div class="fl">Arbiter (2-model ensemble)</div><div class="fv" style="color:var(--seal-bright)">₹17.355cr</div></div>
         </div>
       </div>
       <div class="dentry">
@@ -323,7 +323,8 @@
           <tr class="final"><td class="id">V2</td><td>+ fixed an unfair reliability check</td><td>0.5446</td><td>0.9014</td><td class="pos">+0.0010</td></tr>
           <tr><td class="id">V3</td><td>+ trimmed redundant columns</td><td>0.5469</td><td>0.9058</td><td class="pos">+0.0023</td></tr>
           <tr><td class="id">V4</td><td>+ automated tuning, 60 trials</td><td>0.5514</td><td>0.9077</td><td class="pos">+0.0045</td></tr>
-          <tr class="final"><td class="id">V5</td><td>+ fixed the probabilities (Platt)</td><td>0.5514</td><td>0.9077</td><td class="pos">±0.0000, error −65%</td></tr>
+          <tr><td class="id">V5</td><td>+ fixed the probabilities (Platt)</td><td>0.5514</td><td>0.9077</td><td class="pos">±0.0000, error −65%</td></tr>
+          <tr class="final"><td class="id">V6</td><td>+ 2-model ensemble (XGBoost + untuned LightGBM) — SHIPPED</td><td>0.5597</td><td>0.9126</td><td class="pos">+0.0083, bootstrap CI clears zero</td></tr>
         </tbody>
       </table>
     </div>
@@ -443,7 +444,7 @@
       <div class="tab"><span>Working session · misconception, corrected</span><span>Dashboard build</span></div>
       <div class="body">
         <div class="xline"><div class="xwho">Builder</div><div class="xtext user">"Why does Arbiter score better than doing nothing? If everything just gets accepted, the money should be higher, right?"</div></div>
-        <div class="xline"><div class="xwho">Claude</div><div class="xtext">"No system" doesn't mean maximum revenue — it means every fraud attempt also succeeds, unfiltered. A single fraud loss is worth roughly 6× a single genuine sale's profit. The ₹1.54 crore lift isn't new revenue; it's fraud losses that stopped being absorbed blindly.</div></div>
+        <div class="xline"><div class="xwho">Claude</div><div class="xtext">"No system" doesn't mean maximum revenue — it means every fraud attempt also succeeds, unfiltered. A single fraud loss is worth roughly 6× a single genuine sale's profit. The +₹1.678 crore lift isn't new revenue; it's fraud losses that stopped being absorbed blindly.</div></div>
         <div class="xresolve">Resolved with a worked numeric example, not just an assertion — the builder re-derived the mechanism themselves on the next question.</div>
       </div>
     </div>
