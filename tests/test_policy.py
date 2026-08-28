@@ -70,3 +70,31 @@ def test_value_functions_are_finite_across_the_probability_range():
                 v = fn(p, amt)
                 assert v == v, f"{fn.__name__}({p}, {amt}) returned NaN"  # NaN != NaN
                 assert v not in (float("inf"), float("-inf"))
+
+
+# --- non-finite / out-of-range inputs must fail LOUD, never silently pick 'allow' -----
+# Regression for a code-review finding: with a NaN probability every action value is NaN,
+# and Python's max() returns the FIRST key ('allow') — a silent-allow. decide_action now
+# rejects such inputs so a caller that let one through gets an error, not a bad decision.
+
+import math
+
+import pytest
+
+
+@pytest.mark.parametrize("bad_p", [float("nan"), float("inf"), float("-inf"), -0.01, 1.01, "0.5", None])
+def test_decide_action_rejects_a_non_probability(bad_p):
+    with pytest.raises(ValueError):
+        policy.decide_action(bad_p, 100.0)
+
+
+@pytest.mark.parametrize("bad_amt", [float("nan"), float("inf"), -1.0, "100", None])
+def test_decide_action_rejects_a_bad_amount(bad_amt):
+    with pytest.raises(ValueError):
+        policy.decide_action(0.5, bad_amt)
+
+
+def test_decide_action_still_accepts_the_valid_extremes():
+    for p in (0.0, 1.0):
+        action, _ = policy.decide_action(p, 0.0)
+        assert action in policy.ACTIONS

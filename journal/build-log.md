@@ -1661,3 +1661,53 @@ project is 19 (17 self-found + these 2).
 Note on Codex's run: it reported it "could not verify the test suite locally" — its Python
 resolved to the Windows Store stub (`WindowsApps\...\python.exe`), not the project venv.
 That's its environment, not the repo; `.venv\Scripts\python.exe -m pytest` runs clean here.
+
+## External code review — round 2: the NaN calibrator that slips past `float()`
+
+**How it surfaced.** Codex re-reviewed after the round-1 fixes landed. It confirmed all
+three round-1 fixes were genuine, then found a new P1 in the round-1 fix itself.
+
+**Bug — NaN/Infinity calibrator → silent `allow`.** Round 1's `_load_calibrator()`
+validated `coef`/`intercept` with `float(...)` and a `try/except (TypeError, ValueError)`.
+That does **not** catch `NaN` or `Infinity`: Python's `json.load` parses those tokens by
+default, and `float(float('nan'))` returns `nan` without raising. A calibrator file
+`{"coef": NaN, "intercept": 0.0}` would load clean → every calibrated probability `nan` →
+in `policy.decide_action`, `value_allow/stepup/block` all return `nan` → `max(values,
+key=values.get)` with all-`nan` comparisons keeps the **first** key inserted, which is
+`"allow"`. A broken calibrator would have silently waved everything through — the exact
+opposite of fail-closed.
+
+**Fixed, defence in depth:**
+- `_load_calibrator()` now rejects non-finite coef/intercept (`math.isfinite`) →
+  `ModelUnavailableError` at load.
+- `FraudModel.score_df()` rejects a non-finite or out-of-`[0,1]` ensemble probability →
+  `ModelUnavailableError` → `engine.py` fails closed to `rules_baseline()`.
+- `policy.decide_action()` now raises `ValueError` on a non-probability `calibrated_prob`
+  or a bad `amount_usd`, rather than computing an all-`nan` value dict and returning
+  `allow`. (Belt-and-braces — the two guards above should stop it reaching here, but a
+  direct caller / a replay of a tampered record shouldn't get a silent-allow either.)
+- `engine.decide()` rejects a present-but-invalid `TransactionAmt` (string, `NaN`, `Inf`,
+  negative, wrong type) at the request boundary — previously a string amount crashed the
+  cost-model arithmetic *after* a successful model score (outside the fail-closed `try`),
+  and a `NaN` amount produced the same silent-`allow` as above.
+
+**Round-2 P2s also addressed:**
+- Manifest validation now checks `categorical_columns` is a list, `categorical_mappings`
+  is an object, and every declared categorical column has its own mapping object — a
+  missing one silently turned that column's inputs into the `-1` "unseen" sentinel instead
+  of failing closed.
+- `dashboard.html` now carries a visible "single-model snapshot (pre-ensemble)" banner on
+  the Review Queue and Audit Log tabs, so a judge looking only at the dashboard sees the
+  distinction that was previously only in `eval_report.md` exception item 10.
+- Confirmed still correctly disclosed (not "fixed" — genuinely out of scope): unkeyed
+  audit hashes, single-process JSON history store, manual artifact export.
+
+**Verified.** `pytest tests/` → **98 passed** (was 70; +28 from the round-2 policy/model/
+engine tests, incl. parametrized NaN-calibrator, corrupt-categorical-schema, bad-amount,
+and non-finite-probability cases). `python scripts/demo_engine.py` → `ALL CHECKS PASSED`.
+`py_compile` clean. Manual smoke: `{"coef": NaN}` calibrator → `ModelUnavailableError`,
+confirmed. Project bug tally: 20 (17 self-found + 3 from the two review rounds).
+
+Codex's environment was still broken (its Python resolves to the WindowsApps stub, not the
+venv) so it again couldn't run the suite itself — noted, but the repo's own venv runs it
+clean.

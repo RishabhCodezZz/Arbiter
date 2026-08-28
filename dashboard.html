@@ -201,12 +201,14 @@
 
   <!-- ============ REVIEW QUEUE ============ -->
   <div class="panel" id="panel-queue">
+    <div class="banner" style="border-color:var(--seal);color:var(--seal)"><strong>Single-model snapshot (pre-ensemble).</strong> These rows were captured from an earlier <code class="mono">src/engine.py</code> run on the single-XGBoost model. The headline tiles and every curve on this page are the shipped 2-model ensemble's real data; regenerating this queue needs a fresh Kaggle export of a risk-inclusive sample (see <code class="mono">eval_report.md</code> exception item 10).</div>
     <div class="banner">Captured from a real run of <code class="mono">src/engine.py</code> against real held-out transactions. Real SHAP-derived narratives — not re-run live on this page, but not invented either.</div>
     <div id="rq-list"></div>
   </div>
 
   <!-- ============ AUDIT LOG ============ -->
   <div class="panel" id="panel-audit">
+    <div class="banner" style="border-color:var(--seal);color:var(--seal)"><strong>Single-model snapshot (pre-ensemble)</strong> — same caveat as the Review Queue tab. Headline/curves are the shipped ensemble; these 12 records are historical.</div>
     <div class="banner"><span id="audit-total"></span> real records in the append-only audit log. 12 shown below, sampled across allow/step-up/block for variety.</div>
     <div class="tbl-wrap">
       <table>

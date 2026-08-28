@@ -56,9 +56,14 @@ def _sigmoid(x: float) -> float:
 
 def _load_calibrator(calib_path: str, which: str) -> tuple[float, float]:
     """Load and fully validate a Platt calibrator JSON. Any problem — missing file,
-    unparseable JSON, missing/non-numeric coef or intercept — becomes ModelUnavailableError
-    so engine.py's single fail-closed catch handles it, instead of a KeyError/TypeError
-    escaping FraudModel.__init__ and crashing engine construction."""
+    unparseable JSON, missing/non-numeric/non-finite coef or intercept — becomes
+    ModelUnavailableError so engine.py's single fail-closed catch handles it, instead of a
+    KeyError/TypeError (or a silent NaN) escaping FraudModel.__init__.
+
+    `math.isfinite` matters here: Python's `json.load` parses `NaN`/`Infinity` by default,
+    and `float("nan")` does NOT raise — a NaN coef would sail through and make every
+    calibrated probability NaN, which `policy.decide_action`'s `max()` then resolves to the
+    FIRST action ('allow'). That is a silent-allow, the exact opposite of fail-closed."""
     try:
         with open(calib_path) as f:
             calib = json.load(f)
@@ -70,11 +75,17 @@ def _load_calibrator(calib_path: str, which: str) -> tuple[float, float]:
             f"got keys {sorted(calib) if isinstance(calib, dict) else type(calib).__name__}"
         )
     try:
-        return float(calib["coef"]), float(calib["intercept"])
+        coef, intercept = float(calib["coef"]), float(calib["intercept"])
     except (TypeError, ValueError) as e:
         raise ModelUnavailableError(
             f"{which} calibrator {calib_path} has non-numeric coef/intercept: {e}"
         ) from e
+    if not (math.isfinite(coef) and math.isfinite(intercept)):
+        raise ModelUnavailableError(
+            f"{which} calibrator {calib_path} has non-finite coef/intercept "
+            f"(coef={coef}, intercept={intercept}) — refusing to load rather than emit NaN probabilities"
+        )
+    return coef, intercept
 
 
 class _CalibratedSubModel:
@@ -112,8 +123,9 @@ class FraudModel:
         except Exception as e:
             raise ModelUnavailableError(f"artifact failed to load: {e}") from e
 
-        # Validate the manifest schema here — a syntactically valid but incomplete manifest
-        # (e.g. `{}`) must fail closed, not raise a bare KeyError past engine.py's catch.
+        # Validate the manifest schema here — a syntactically valid but incomplete/corrupt
+        # manifest must fail closed, not raise a bare KeyError past engine.py's catch, and
+        # not silently degrade every categorical to -1 because a mapping went missing.
         if not isinstance(self.manifest, dict):
             raise ModelUnavailableError(f"manifest {manifest_path} is not a JSON object")
         for key in ("features", "categorical_columns", "categorical_mappings"):
@@ -121,6 +133,19 @@ class FraudModel:
                 raise ModelUnavailableError(f"manifest {manifest_path} is missing required key '{key}'")
         if not isinstance(self.manifest["features"], list) or not self.manifest["features"]:
             raise ModelUnavailableError(f"manifest {manifest_path} 'features' must be a non-empty list")
+        if not isinstance(self.manifest["categorical_columns"], list):
+            raise ModelUnavailableError(f"manifest {manifest_path} 'categorical_columns' must be a list")
+        if not isinstance(self.manifest["categorical_mappings"], dict):
+            raise ModelUnavailableError(f"manifest {manifest_path} 'categorical_mappings' must be an object")
+        # every declared categorical column needs its own mapping object, or its inputs
+        # would silently all become the -1 "unseen" sentinel
+        _missing_maps = [c for c in self.manifest["categorical_columns"]
+                         if not isinstance(self.manifest["categorical_mappings"].get(c), dict)]
+        if _missing_maps:
+            raise ModelUnavailableError(
+                f"manifest {manifest_path}: categorical columns {_missing_maps[:5]} have no "
+                f"(or a non-object) entry in 'categorical_mappings'"
+            )
 
         self.feature_order = self.manifest["features"]
 
@@ -219,6 +244,14 @@ class FraudModel:
         once and feed it to both this AND the SHAP explainers."""
         raw = {"xgboost": self._xgb.raw(X), "lightgbm": self._lgb.raw(X)}
         calibrated = (self._xgb.calibrate(raw["xgboost"]) + self._lgb.calibrate(raw["lightgbm"])) / 2
+        # A NaN/out-of-range probability would flow into decide_action(), where every
+        # action's value becomes NaN and max() silently picks the first one ('allow').
+        # Fail closed instead — engine.py catches ModelUnavailableError from here.
+        if not (math.isfinite(calibrated) and 0.0 <= calibrated <= 1.0):
+            raise ModelUnavailableError(
+                f"ensemble produced an invalid probability ({calibrated}) from raw scores "
+                f"{raw} — failing closed rather than feeding it to the cost model"
+            )
         return raw, calibrated
 
     def score(self, feature_dict: dict) -> tuple[dict, float]:

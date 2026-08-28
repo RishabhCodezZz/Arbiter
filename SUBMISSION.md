@@ -123,12 +123,13 @@ actually reported: XGBoost beats a real, capably-chosen LLM by **3.65x** on accu
 roughly six orders of magnitude on latency for this task — measured evidence for exactly
 the "where you chose not to use AI" question the rubric asks.
 
-**The tally.** 19 real defects across the project — 17 found by our own testing (running
-things and trying to break them, never by reading code and calling it correct), plus 2
-more from an independent post-migration code review: a train/serve `std` mismatch on one
-feature (ddof=0 online vs ddof=1 in training — `[0,2]` → `1.0` vs `1.4142`), and a
-malformed-but-valid artifact that crashed engine construction instead of failing closed.
-Both fixed, with regression tests; the same review's production-grade findings (keyed
-audit signatures, a concurrency-safe feature store) are in the honest exception list,
-disclosed rather than hidden. Every defect logged as it surfaced, every one fixed, none
-shipped.
+**The tally.** 20 real defects across the project — 17 found by our own testing (running
+things and trying to break them, never by reading code and calling it correct), plus 3
+more from a two-round independent post-migration code review: a train/serve `std` mismatch
+on one feature (ddof=0 online vs ddof=1 in training — `[0,2]` → `1.0` vs `1.4142`), a
+malformed-but-valid artifact that crashed engine construction instead of failing closed,
+and a NaN/Infinity calibrator coefficient that `float(...)` accepted and that would have
+produced a silent `allow`. All fixed, with regression tests; the same review's
+production-grade findings (keyed audit signatures, a concurrency-safe feature store) are
+in the honest exception list, disclosed rather than hidden. Every defect logged as it
+surfaced, every one fixed, none shipped.

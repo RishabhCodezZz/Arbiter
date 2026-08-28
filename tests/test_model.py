@@ -154,3 +154,52 @@ def test_malformed_calibrator_raises_model_unavailable(tmp_path, bad_calib):
     (d / "calibrator.json").write_text(bad_calib)
     with pytest.raises(ModelUnavailableError):
         FraudModel(str(d))
+
+
+@requires_real_artifacts
+@pytest.mark.parametrize("bad_calib", [
+    '{"coef": NaN, "intercept": 0.0}',          # json.load parses NaN by default
+    '{"coef": Infinity, "intercept": 0.0}',
+    '{"coef": 1.0, "intercept": -Infinity}',
+])
+def test_non_finite_calibrator_raises_model_unavailable(tmp_path, bad_calib):
+    """A NaN/Inf coef would sail through `float(...)` and make every calibrated probability
+    NaN — which decide_action()'s max() resolves to 'allow'. Must fail closed at load."""
+    d = tmp_path / "artifacts_nonfinite_calib"
+    d.mkdir()
+    _copy_real_artifacts(d)
+    (d / "calibrator.json").write_text(bad_calib)
+    with pytest.raises(ModelUnavailableError):
+        FraudModel(str(d))
+
+
+@pytest.mark.parametrize("bad_manifest", [
+    {"features": ["a"], "categorical_columns": "not-a-list", "categorical_mappings": {}},
+    {"features": ["a"], "categorical_columns": [], "categorical_mappings": []},
+    {"features": ["a"], "categorical_columns": ["X"], "categorical_mappings": {}},          # X has no mapping
+    {"features": ["a"], "categorical_columns": ["X"], "categorical_mappings": {"X": "nope"}},  # non-object mapping
+])
+def test_corrupt_categorical_schema_raises_model_unavailable(tmp_path, bad_manifest):
+    """A categorical column with no (or a non-object) mapping would silently turn every
+    value of that column into the -1 'unseen' sentinel. Fail closed instead."""
+    d = tmp_path / "artifacts_bad_cat_schema"
+    d.mkdir()
+    with open(d / "feature_manifest.json", "w") as f:
+        json.dump(bad_manifest, f)
+    with pytest.raises(ModelUnavailableError):
+        FraudModel(str(d))
+
+
+@requires_real_artifacts
+def test_non_finite_ensemble_probability_fails_closed(tmp_path):
+    """If a sub-model ever emits a NaN (degenerate row, corrupt booster), score_df() must
+    raise rather than return it — engine.py then fails closed. Simulated by poisoning one
+    calibrator coefficient after load."""
+    clean = tmp_path / "artifacts_clean"
+    clean.mkdir()
+    _copy_real_artifacts(clean)
+    model = FraudModel(str(clean))
+    model._xgb._coef = float("nan")  # any raw score -> NaN calibrated -> NaN average
+    X = model.to_dataframe({k: None for k in model.feature_order})
+    with pytest.raises(ModelUnavailableError):
+        model.score_df(X)

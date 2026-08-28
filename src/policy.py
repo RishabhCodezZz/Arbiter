@@ -8,6 +8,8 @@ about consolidating this once both environments can share one source file.
 Every number is sourced — see notebooks/04_cost_model.py's markdown for citations
 (Razorpay's own chargeback-fee range and MDR, 3D Secure studies, checkout-friction studies).
 """
+import math
+
 CHARGEBACK_FEE = 500.0
 MDR_RATE = 0.02 * 1.18  # Razorpay's disclosed 2% platform fee + 18% GST
 MARGIN = 0.20
@@ -88,6 +90,16 @@ def decide_action(calibrated_prob: float, amount_usd: float, degraded: bool = Fa
     allow ceiling drops from p<0.0393 to p<0.0150, and the confident-block floor rises from
     p>0.6885 to p>0.6982. A real, modest widening, not an unchanged one.
     """
+    # Defensive: a non-finite / out-of-range probability makes every action's value NaN,
+    # and max() then silently returns the FIRST key ('allow'). Callers (engine.py, replay)
+    # are expected to have rejected this already; if one slips through, fail LOUD here
+    # rather than emit a silent-allow.
+    if not (isinstance(calibrated_prob, (int, float)) and math.isfinite(calibrated_prob)
+            and 0.0 <= calibrated_prob <= 1.0):
+        raise ValueError(f"decide_action: calibrated_prob must be a finite probability in [0,1]; got {calibrated_prob!r}")
+    if not (isinstance(amount_usd, (int, float)) and math.isfinite(amount_usd) and amount_usd >= 0):
+        raise ValueError(f"decide_action: amount_usd must be a finite number >= 0; got {amount_usd!r}")
+
     if degraded:
         calibrated_prob = calibrated_prob * (1 - PROB_SHRINK_TOWARD_UNCERTAINTY) + 0.5 * PROB_SHRINK_TOWARD_UNCERTAINTY
 

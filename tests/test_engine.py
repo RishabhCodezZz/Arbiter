@@ -138,6 +138,24 @@ def test_missing_transaction_id_raises_a_clear_error(tmp_path, bad_txn):
         e.decide(bad_txn)
 
 
+@pytest.mark.parametrize("bad_amt", [float("nan"), float("inf"), -5.0, "100", [1], True])
+def test_non_finite_or_negative_amount_rejected_at_boundary(tmp_path, bad_amt):
+    """A NaN/string/negative TransactionAmt would otherwise reach the cost-model arithmetic
+    (after a successful model score, outside the fail-closed try) — a NaN amount makes every
+    action value NaN and max() picks 'allow'. Reject it at the boundary instead."""
+    e = _no_model_engine(tmp_path)
+    with pytest.raises(ValueError):
+        e.decide({"TransactionID": "amt-1", "TransactionAmt": bad_amt})
+
+
+def test_absent_amount_is_still_allowed(tmp_path):
+    """TransactionAmt is optional — a transaction without one must NOT be rejected (it's
+    treated as 0.0 downstream), only a present-but-invalid value is."""
+    e = _no_model_engine(tmp_path)
+    d = e.decide({"TransactionID": "amt-2", "TransactionDT": 86400 * 100})
+    assert d.action in ("step-up", "block")  # no model -> fail closed, but no ValueError
+
+
 @requires_real_artifacts
 def test_unrecoverable_feature_build_still_fails_closed(engine):
     """A non-numeric TransactionDT breaks features.build() AND features.build_degraded().

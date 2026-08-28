@@ -16,6 +16,7 @@ INVARIANTS THIS FILE ENFORCES:
 Get any of these orderings wrong and CLAUDE.md's "causal, replayable, idempotent, the LLM
 never decides" claims become false in the one place that actually matters.
 """
+import math
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -73,11 +74,19 @@ class Engine:
         return self._explainer
 
     def decide(self, transaction: dict) -> Decision:
-        # Request-boundary check: a transaction with no ID can't be made idempotent or
-        # audited, so this is a hard caller-contract violation — surface it as a clear
-        # ValueError rather than a bare KeyError from deep inside str(transaction[...]).
+        # Request-boundary checks: reject malformed requests here with a clear ValueError
+        # rather than letting a bad value crash deep inside str(txn[...]) or the cost-model
+        # arithmetic (where a NaN amount would make every action's value NaN and max() pick
+        # 'allow' — a silent-allow).
         if not isinstance(transaction, dict) or transaction.get("TransactionID") is None:
             raise ValueError("transaction must be a dict with a non-null 'TransactionID'")
+        _amt = transaction.get("TransactionAmt")
+        if _amt is not None:
+            if isinstance(_amt, bool) or not isinstance(_amt, (int, float)) \
+                    or not math.isfinite(_amt) or _amt < 0:
+                raise ValueError(
+                    f"'TransactionAmt' must be a finite number >= 0 (or absent); got {_amt!r}"
+                )
         txn_id = str(transaction["TransactionID"])
 
         # --- idempotency: check BEFORE any scoring work. A duplicate/replayed transaction

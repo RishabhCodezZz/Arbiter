@@ -303,7 +303,7 @@ problem here, and the largest gap should drive the response. The 60-trial Optuna
 already searched the regularization space (`reg_lambda`, `reg_alpha`, `max_depth`,
 `min_child_weight`) against a genuine validation objective; re-opening tuning this late
 would cascade into re-verifying every downstream artifact (cost model, dashboard, docket,
-audit log, 70 tests) that depends on the model artifact, for an uncertain and likely
+audit log, 98 tests) that depends on the model artifact, for an uncertain and likely
 modest payoff against the *smaller* of two measured gaps. The dominant gap — temporal
 mismatch — is a property of the problem (new clients appearing over time), not a model
 defect regularization can fix; the project's existing responses to it (causal per-client
@@ -363,9 +363,10 @@ panel will find it anyway if it isn't. (This list has moved several times: down 
 when the false-positive-cost estimate — previously item 5 — was resolved with an exact
 number in §4; up to 8 with the error-analysis variance finding; up to 9 with the
 segment-calibration confound; up to 10 with the ensemble-rebuild granular-recompute gap;
-up to 14 after an external code review found two real defects (fixed — item 11) and
-flagged three production gaps left open on purpose (items 12–14). Same discipline every
-time: fix it and say so, don't quietly renumber and hope no one compares versions.)
+up to 14 after a two-round external code review found three real defects (all fixed —
+item 11) and flagged three production gaps left open on purpose (items 12–14). Same
+discipline every time: fix it and say so, don't quietly renumber and hope no one compares
+versions.)
 
 1. **Card-level identity reconstruction (Component C) — scoped out, not solved.** Tried to
    reproduce the 1st-place solution's client-identity purity (target 96.9/2.9/0.2%
@@ -454,23 +455,32 @@ time: fix it and say so, don't quietly renumber and hope no one compares version
     a fresh Kaggle export of full-feature rows for a risk-inclusive sample — not done here
     rather than faked with placeholder entries.
 
-11. **Two real defects were found by an external code review after the migration and
-    fixed; the review also flagged genuine production gaps that are deliberately not
-    closed.** *Fixed:* (a) a train/serve skew — the online `CoarseStats.std()` used
+11. **An external code review ran in two rounds after the migration; it found three real
+    defects (all fixed) and flagged production gaps deliberately left open (items 12–14).**
+    *Round 1 — fixed:* (a) a train/serve skew — the online `CoarseStats.std()` used
     population std (ddof=0) while training builds `uid_ambiguity_std_prior` with
     `expanding().std()` (ddof=1); for a history of `[0, 2]` that is `1.0` vs `1.4142` on a
     feature the ensemble consumes. Now ddof=1 online, pinned by a batch-vs-online parity
     test (`tests/test_store.py`). (b) a malformed-but-valid-JSON artifact (`{}` manifest,
     incomplete calibrator) raised `KeyError` past `engine.py`'s `except ModelUnavailableError`
-    and crashed construction instead of failing closed; the manifest/calibrator schema is
-    now fully validated into `ModelUnavailableError` and tested. Also fixed: a missing
-    `TransactionID` now raises a clear `ValueError` at the boundary instead of a bare
-    `KeyError`; a double feature-build failure now fails closed instead of escaping; the
-    audit hash now covers the decision fields (action / probabilities / cost params /
-    degraded flag), not just the feature vector; and `verify_and_replay()` now replays
-    against the record's **stored** `cost_params` rather than `policy.py`'s current module
-    constants. `dashboard.html`/`docket.html` no longer import Google Fonts, so "self-
-    contained / offline" is now literally true (type falls back to system stacks).
+    and crashed construction instead of failing closed; manifest/calibrator schema now
+    validated into `ModelUnavailableError`.
+    *Round 2 — fixed:* (c) the round-1 calibrator check used only `float(...)`, which does
+    **not** reject `NaN`/`Infinity` (Python's `json.load` parses them by default). A NaN
+    coefficient made every calibrated probability NaN, and `decide_action`'s `max()` then
+    silently returns the first action — `allow`. Now: non-finite calibrator coefficients
+    are rejected at load; `score_df()` rejects a non-finite / out-of-`[0,1]` ensemble
+    probability (→ fail closed); `decide_action()` raises on a non-probability input rather
+    than emitting a silent-allow; a present-but-invalid `TransactionAmt` (string / NaN /
+    negative) is rejected at the request boundary; and manifest validation now checks
+    `categorical_columns` / `categorical_mappings` types and that every categorical column
+    has its own mapping object (a missing one silently turned inputs into the `-1` sentinel).
+    *Also, across both rounds:* missing `TransactionID` → clear `ValueError` not `KeyError`;
+    double feature-build failure → fail closed; the audit `record_hash` covers action /
+    probabilities / cost params / degraded (not just the feature vector); `verify_and_replay()`
+    replays against the record's **stored** `cost_params`, not `policy.py`'s current
+    constants; `dashboard.html`/`docket.html` dropped the Google Fonts `@import` (offline is
+    now literally true) and label the single-model queue/audit snapshots in-page.
 
 12. **The audit log is replayable but not cryptographically tamper-proof against an
     attacker with write access to the file.** It is plaintext JSONL with an **unkeyed**
