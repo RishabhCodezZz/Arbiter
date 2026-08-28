@@ -23,7 +23,14 @@ class AuditRecord:
     timestamp: float
     model_version: str
     feature_vector: dict          # human-readable causal features, for the replay check
-    feature_vector_hash: str      # tamper-evidence: recomputed and checked before replay
+    feature_vector_hash: str      # recomputed and checked before replay (feature vector only)
+    record_hash: str              # covers feature_vector + the DECISION fields (action,
+                                   # calibrated/raw probability, cost_params, model_version,
+                                   # transaction_id) so those can't be altered undetected
+                                   # the way hashing only the feature vector allowed. NOTE:
+                                   # still an UNKEYED sha256 — this catches casual/partial
+                                   # tampering, not an attacker who rewrites the hash too.
+                                   # See docs/eval_report.md exception list for the residual.
     raw_probability: Optional[dict]   # {"xgboost": ..., "lightgbm": ...} — each ensemble
                                        # member's own raw score, kept for audit transparency
                                        # (not just the blended result). None on the
@@ -46,6 +53,27 @@ class AuditRecord:
 def _hash_features(feature_vector: dict) -> str:
     # sorted keys -> stable hash regardless of dict insertion order
     encoded = json.dumps(feature_vector, sort_keys=True, default=str).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _hash_record(transaction_id, model_version, feature_vector, raw_prob, calibrated_prob,
+                 cost_params, action, degraded) -> str:
+    """Hash the fields a replay actually depends on — so altering the stored action,
+    probability, cost params or degraded flag (while leaving the feature vector alone) is
+    detectable, which hashing only the feature vector did not catch. Unkeyed sha256: raises
+    the bar, does not make the log cryptographically tamper-proof against someone who can
+    also recompute this hash."""
+    payload = {
+        "transaction_id": str(transaction_id),
+        "model_version": model_version,
+        "feature_vector": feature_vector,
+        "raw_probability": raw_prob,
+        "calibrated_probability": calibrated_prob,
+        "cost_params": cost_params,
+        "action": action,
+        "degraded": bool(degraded),
+    }
+    encoded = json.dumps(payload, sort_keys=True, default=str).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -92,6 +120,8 @@ class AuditLog:
             model_version=model_version,
             feature_vector=feature_vector,
             feature_vector_hash=_hash_features(feature_vector),
+            record_hash=_hash_record(transaction_id, model_version, feature_vector,
+                                     raw_prob, calibrated_prob, cost_params, action, degraded),
             raw_probability=raw_prob,
             calibrated_probability=calibrated_prob,
             cost_params=cost_params,
@@ -108,33 +138,49 @@ class AuditLog:
 
 
 def verify_and_replay(record: dict, policy_module) -> tuple[bool, str]:
-    """THE replay proof: given a stored record, (1) recompute the feature-vector hash and
-    confirm it matches what was stored — proves the record wasn't tampered with after the
-    fact — then (2) re-run the SAME policy decision from the stored probability and amount,
-    and assert it matches the stored action. Returns (ok, message).
+    """THE replay proof: given a stored record, (1) recompute the hashes and confirm they
+    match what was stored — the feature-vector hash, and the broader record hash that also
+    covers the action / probabilities / cost params — then (2) re-run the SAME policy
+    decision from the stored probability, amount AND the stored cost parameters, and assert
+    it matches the stored action. Returns (ok, message).
 
     Deliberately does NOT re-run the model (that would need the exact model artifact and
     feature vector reconstruction) — it replays the POLICY layer, which is the part that
     must be perfectly deterministic and auditable. The model-scoring path is proven
     separately by the correctness checks in notebook 02/03.
     """
-    recomputed_hash = _hash_features(record["feature_vector"])
-    if recomputed_hash != record["feature_vector_hash"]:
+    if _hash_features(record["feature_vector"]) != record["feature_vector_hash"]:
         return False, "TAMPER DETECTED: feature vector hash does not match stored hash"
+
+    # Broader hash: only checked when present (records written before this field existed
+    # don't have it — the feature-vector hash above still applied to them).
+    stored_record_hash = record.get("record_hash")
+    if stored_record_hash:
+        recomputed = _hash_record(
+            record["transaction_id"], record["model_version"], record["feature_vector"],
+            record.get("raw_probability"), record.get("calibrated_probability"),
+            record.get("cost_params"), record["action"], record.get("degraded", False),
+        )
+        if recomputed != stored_record_hash:
+            return False, ("TAMPER DETECTED: record hash does not match — a decision field "
+                           "(action / probability / cost params) was altered after the fact")
 
     if record["calibrated_probability"] is None:
         # fallback-path record — nothing to replay against the cost model, but the
-        # tamper check above still applies and already passed if we reach here.
+        # tamper checks above still applied and already passed if we reach here.
         return True, "fallback-path record: hash verified, no policy replay applicable"
 
     amount_usd = record["feature_vector"].get("_amount")
-    # MUST pass the same `degraded` flag the original decision used — a decision made
-    # under a widened step-up band would otherwise be replayed against the NORMAL
-    # boundaries and could produce a different action, falsely flagged as tampered even
-    # though nothing was actually altered. Caught this while wiring degraded-mode support
-    # into engine.py: verify_and_replay was written before `degraded` existed.
-    replayed_action, replayed_values = policy_module.decide_action(
-        record["calibrated_probability"], amount_usd, degraded=record.get("degraded", False)
+    # Replay against the cost parameters STORED IN THE RECORD, not policy.py's current
+    # module constants — the record is meant to be re-derivable from itself, and the
+    # constants can legitimately change between decision and audit (a merchant re-tunes
+    # margin, an FX rate is corrected). Passing the same `degraded` flag matters too: a
+    # decision made under a widened step-up band replayed against the normal boundaries
+    # could produce a different action and be falsely flagged as tampered.
+    replayed_action, _ = policy_module.decide_action(
+        record["calibrated_probability"], amount_usd,
+        degraded=record.get("degraded", False),
+        cost_params=record.get("cost_params"),
     )
     if replayed_action != record["action"]:
         return False, (f"REPLAY MISMATCH: stored action was '{record['action']}', "

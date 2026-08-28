@@ -17,18 +17,39 @@ LTV_MULTIPLIER = 3.0
 USD_TO_INR = 95.41  # live, dated quote, corrected from an earlier placeholder — see journal
 
 
-def value_allow(p: float, amt: float) -> float:
-    return (1 - p) * (MARGIN * amt - MDR_RATE * amt) - p * (amt + CHARGEBACK_FEE + MDR_RATE * amt)
+def _resolve(cp: "dict | None") -> dict:
+    """Resolve the cost parameters for one decision. cp=None -> the module constants above
+    (the normal engine path, byte-identical to the notebooks). cp=<dict> -> use exactly
+    those values — this is how audit.verify_and_replay() replays a decision against the
+    parameters that were *actually in force when it was made* (stored in the audit record),
+    not whatever the constants happen to be now. Missing keys fall back to the constant."""
+    cp = cp or {}
+    return {
+        "chargeback_fee": cp.get("chargeback_fee", CHARGEBACK_FEE),
+        "mdr_rate": cp.get("mdr_rate", MDR_RATE),
+        "margin": cp.get("margin", MARGIN),
+        "p_stop": cp.get("p_stop", P_STOP),
+        "p_dropoff": cp.get("p_dropoff", P_DROPOFF),
+        "ltv_multiplier": cp.get("ltv_multiplier", LTV_MULTIPLIER),
+        "usd_to_inr": cp.get("usd_to_inr", USD_TO_INR),
+    }
 
 
-def value_stepup(p: float, amt: float) -> float:
-    genuine_value = (1 - p) * (1 - P_DROPOFF) * (MARGIN * amt - MDR_RATE * amt)
-    fraud_cost = p * (1 - P_STOP) * (amt + CHARGEBACK_FEE + MDR_RATE * amt)
+def value_allow(p: float, amt: float, cp: "dict | None" = None) -> float:
+    c = _resolve(cp)
+    return (1 - p) * (c["margin"] * amt - c["mdr_rate"] * amt) - p * (amt + c["chargeback_fee"] + c["mdr_rate"] * amt)
+
+
+def value_stepup(p: float, amt: float, cp: "dict | None" = None) -> float:
+    c = _resolve(cp)
+    genuine_value = (1 - p) * (1 - c["p_dropoff"]) * (c["margin"] * amt - c["mdr_rate"] * amt)
+    fraud_cost = p * (1 - c["p_stop"]) * (amt + c["chargeback_fee"] + c["mdr_rate"] * amt)
     return genuine_value - fraud_cost
 
 
-def value_block(p: float, amt: float) -> float:
-    genuine_penalty = MARGIN * amt * (1 + LTV_MULTIPLIER)
+def value_block(p: float, amt: float, cp: "dict | None" = None) -> float:
+    c = _resolve(cp)
+    genuine_penalty = c["margin"] * amt * (1 + c["ltv_multiplier"])
     return -(1 - p) * genuine_penalty
 
 
@@ -38,7 +59,8 @@ ACTIONS = ("allow", "step-up", "block")
 PROB_SHRINK_TOWARD_UNCERTAINTY = 0.05  # see decide_action's degraded= docstring
 
 
-def decide_action(calibrated_prob: float, amount_usd: float, degraded: bool = False) -> tuple[str, dict]:
+def decide_action(calibrated_prob: float, amount_usd: float, degraded: bool = False,
+                  cost_params: "dict | None" = None) -> tuple[str, dict]:
     """The real, per-transaction policy — not a single global threshold. See
     notebooks/04_cost_model.py's markdown for why: every cost term scales with amount, so
     the cost-optimal action genuinely depends on transaction size, not just probability.
@@ -69,11 +91,12 @@ def decide_action(calibrated_prob: float, amount_usd: float, degraded: bool = Fa
     if degraded:
         calibrated_prob = calibrated_prob * (1 - PROB_SHRINK_TOWARD_UNCERTAINTY) + 0.5 * PROB_SHRINK_TOWARD_UNCERTAINTY
 
-    amt_inr = amount_usd * USD_TO_INR
+    c = _resolve(cost_params)
+    amt_inr = amount_usd * c["usd_to_inr"]
     values = {
-        "allow": value_allow(calibrated_prob, amt_inr),
-        "step-up": value_stepup(calibrated_prob, amt_inr),
-        "block": value_block(calibrated_prob, amt_inr),
+        "allow": value_allow(calibrated_prob, amt_inr, c),
+        "step-up": value_stepup(calibrated_prob, amt_inr, c),
+        "block": value_block(calibrated_prob, amt_inr, c),
     }
     action = max(values, key=values.get)
     return action, values

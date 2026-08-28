@@ -73,6 +73,11 @@ class Engine:
         return self._explainer
 
     def decide(self, transaction: dict) -> Decision:
+        # Request-boundary check: a transaction with no ID can't be made idempotent or
+        # audited, so this is a hard caller-contract violation — surface it as a clear
+        # ValueError rather than a bare KeyError from deep inside str(transaction[...]).
+        if not isinstance(transaction, dict) or transaction.get("TransactionID") is None:
+            raise ValueError("transaction must be a dict with a non-null 'TransactionID'")
         txn_id = str(transaction["TransactionID"])
 
         # --- idempotency: check BEFORE any scoring work. A duplicate/replayed transaction
@@ -100,15 +105,25 @@ class Engine:
             fv = features_mod.build(transaction, self.store, self.manifest or _EMPTY_MANIFEST)
         except Exception as e:
             fallbacks.append(f"feature_build_failed:{type(e).__name__}")
-            fv = features_mod.build_degraded(transaction, self.manifest or _EMPTY_MANIFEST)
             degraded = True
+            try:
+                fv = features_mod.build_degraded(transaction, self.manifest or _EMPTY_MANIFEST)
+            except Exception as e2:
+                # Even the degraded builder failed (e.g. a non-numeric TransactionDT that
+                # breaks both paths). Don't let this escape — fall back to a minimal vector
+                # so the decision itself still fails closed via the model-unavailable path.
+                fallbacks.append(f"degraded_build_failed:{type(e2).__name__}")
+                fv = {"_uid": None, "_coarse_uid": None, "_amount": None, "_dt": None,
+                      "_day": None, "_d15n": None, "_device": None, "_email": None}
 
         # --- score, with the fail-closed rules baseline if the model is unavailable ---
         shap_contributions = None
         narrative_text, used_llm = None, False
 
-        if self.model is None:
-            fallbacks.append("model_unavailable_fail_closed")
+        _degraded_build_failed = any(f.startswith("degraded_build_failed:") for f in fallbacks)
+        if self.model is None or _degraded_build_failed:
+            fallbacks.append("model_unavailable_fail_closed" if self.model is None
+                             else "feature_build_unrecoverable_fail_closed")
             raw_prob, calibrated_prob = None, None
             action, values = policy.rules_baseline(fv.get("_amount") or 0.0)
         else:

@@ -86,23 +86,36 @@ Every decision writes one append-only record:
 
 ```
 transaction_id · timestamp · model_version · feature_vector · feature_vector_hash
+record_hash (covers action + probabilities + cost_params + degraded, not just features)
 raw_probability · calibrated_probability · cost_params (the exact values in force)
 action · action_values (what each of the 3 options was worth, for review)
 latency_ms · fallbacks_triggered · idempotent_replay · degraded
 shap_contributions · narrative · used_llm
 ```
 
-**Replayable by construction:** `verify_and_replay()` takes a stored record's own inputs,
-reruns them through the same deterministic policy formulas, and compares the result to the
-stored action. A mismatch means either the record was edited after the fact or there's a
-real bug — either way, it's caught, not trusted blindly. This is what makes the append-only
-log provably trustworthy rather than merely claimed to be.
+**Replayable by construction:** `verify_and_replay()` takes a stored record's own inputs —
+including the `cost_params` that were in force when the decision was made, not whatever
+`policy.py`'s constants happen to be now — reruns them through the same deterministic policy
+formulas, and compares the result to the stored action. It also recomputes both hashes. A
+mismatch means the record was edited after the fact or there's a real bug — either way it's
+caught, not trusted blindly.
+
+**What this is not:** the hashes are **unkeyed** SHA-256. They make casual or partial
+tampering detectable; they do not stop an attacker with write access who also recomputes
+the hash. Real payment-grade integrity needs a keyed signature (HMAC/asymmetric), a hash
+chain, and append-only external storage — see `docs/eval_report.md` exception list item 12.
+Likewise `store.py` is a single-process JSON file: no locking or event-time ordering, so
+the causal guarantee holds for in-order, single-threaded processing only (item 13).
 
 ## Failure paths — designed, and each one proven by actually breaking it
 
 | Failure | Behavior | How it was verified |
 |---|---|---|
 | Model artifact missing/corrupt | Fail closed to `rules_baseline()` (step-up everything), never silently allow | `scripts/demo_engine.py` — artifact deleted mid-test, confirmed; `tests/test_engine.py` |
+| Model artifact malformed (valid JSON, wrong shape — e.g. `{}` manifest, incomplete calibrator) | Full schema validation → `ModelUnavailableError` → same fail-closed path (was a `KeyError` that crashed engine construction; found in code review) | `tests/test_model.py` — parametrized over 6 malformed manifests + 4 malformed calibrators; `tests/test_model.py::test_engine_survives_a_malformed_manifest` |
+| Request missing `TransactionID`, or both feature-build paths fail | Missing ID → clear `ValueError` at the boundary (not a bare `KeyError`); double-build failure → fail closed, logged | `tests/test_engine.py::test_missing_transaction_id_raises_a_clear_error`, `::test_unrecoverable_feature_build_still_fails_closed` |
+| A stored `cost_params` / probability / action is edited | `record_hash` recompute mismatch → rejected; replay also uses the *stored* `cost_params` | `tests/test_audit.py::test_tampered_cost_params_are_detected_by_record_hash`, `::test_replay_uses_stored_cost_params_not_current_module_constants` |
+| Online feature stats drift from the training definition | Batch-vs-online golden-vector parity test pins `CoarseStats.std()` (ddof=1) and `ClientStats.std()` (ddof=0) to their notebook formulas | `tests/test_store.py` — added after a real ddof=0/ddof=1 skew was caught in code review |
 | XGBoost or LightGBM version mismatch | Refuses to score at all (`XGBoostVersionMismatchError` / `LightGBMVersionMismatchError`) | `tests/test_model.py` — a faked mismatch on EITHER model's version independently confirmed to fire, and the explicit override independently confirmed to work, for both; a clean unmodified copy of the real artifacts confirmed to load with no override needed, proving the mismatch tests exercise the version check and not something else |
 | LLM unavailable / times out / returns garbage | Decision unaffected; narrative falls back to a deterministic template built from the same SHAP numbers | `tests/test_narrative.py` — timeout and garbage-response each their own named test via dependency injection (no live network call), plus `narrate()`-level fallback tests; response validation rejects 4 classes of bad LLM output |
 | Required feature missing | Impute, flag `degraded=True`, **widen** the step-up band (shrink probability toward 0.5, not blend output values — the first design was proven algebraically incapable of moving the decision boundary at all) | Boundary measured directly before/after the fix: confident-allow ceiling moved p<0.0393→p<0.0150; regression-tested in `tests/test_policy.py::test_degraded_mode_widens_the_stepup_band` |

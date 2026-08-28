@@ -1598,3 +1598,66 @@ Verified after: `pytest tests/` and `python scripts/demo_engine.py` both still g
 (no code touched, docs only), and a repeat grep sweep — this time actually complete —
 shows every remaining single-model number is inside an explicitly-labelled historical
 stage record.
+
+## External code review (Codex) — two real bugs in shipped `src/`, plus honest production gaps
+
+**How it surfaced.** After the consistency migration, the repo was handed to an independent
+review agent (Codex). It came back with 3 P1 and 4 P2 findings. I verified each one against
+the actual code before touching anything — most were right.
+
+**Bug 1 — train/serve skew on `uid_ambiguity_std_prior` (real, shipped).**
+`src/store.py`'s `CoarseStats.std()` computed `sqrt(sumsq/n - mean**2)` — population std,
+ddof=0. The training notebooks (02 line 207, 06 line 97) build the same feature with
+`s.expanding().std()`, and pandas' default is **ddof=1** (sample std). For a bucket history
+of `[0, 2]` that's `1.0` online vs `1.4142` in training — a genuine skew on a feature the
+shipped ensemble consumes (confirmed it's in the 381-entry `feature_manifest.json`).
+First hypothesis was "maybe the notebook sets `ddof=0` somewhere" — checked, it doesn't.
+Fixed `CoarseStats.std()` to ddof=1 with the numerically-stabler `sum_sq_dev/(n-1)` form,
+and added a comment on `ClientStats.std()` noting *it* stays ddof=0 on purpose (its feature,
+`uid_amt_std_prior`, is built ddof=0 in the notebooks too — checked). New file
+`tests/test_store.py` pins both to their notebook definitions with parametrized
+batch-vs-online golden vectors, including the exact `[0,2] -> sqrt(2)` regression case.
+
+**Bug 2 — malformed artifact crashed instead of failing closed (real).**
+`src/model.py` line 92 `self.manifest["features"]` and the calibrator `calib["coef"]`
+accesses were **outside** their `try/except`. A syntactically valid but incomplete artifact
+(`{}` manifest, `{}` calibrator) raised a bare `KeyError`, which `engine.py`'s
+`except ModelUnavailableError` doesn't catch → `Engine(...)` construction crashed instead
+of degrading to `self.model = None`. Fixed: a `_load_calibrator()` helper and an explicit
+manifest-schema check, both converting every load/shape problem to `ModelUnavailableError`.
+`tests/test_model.py` gained parametrized malformed-manifest / malformed-calibrator cases
+and a `test_engine_survives_a_malformed_manifest`.
+
+**Also hardened (smaller, all real):**
+- `engine.decide()` now rejects a missing/null `TransactionID` with a clear `ValueError` at
+  the boundary instead of a `KeyError` deep inside `str(txn["TransactionID"])`.
+- The degraded feature-build is now itself wrapped — if `build_degraded()` also throws
+  (e.g. a non-numeric `TransactionDT` breaks both paths), the engine fails closed to
+  `rules_baseline()` instead of the exception escaping.
+- `src/audit.py` gained `record_hash` — covers `feature_vector` **plus** action,
+  raw/calibrated probability, `cost_params` and the `degraded` flag. Editing a stored
+  action or probability alone was previously undetectable (the old hash was feature-vector
+  only). Still an unkeyed SHA-256 — this raises the bar, it is not payment-grade integrity.
+- `verify_and_replay()` now replays against the record's **stored** `cost_params`, not
+  `policy.py`'s current module constants. `policy.decide_action` / `value_*` took an
+  optional `cost_params` override to make this possible; `cost_params=None` is byte-
+  identical to before, so the engine's own path and the notebook parity are unchanged.
+- `dashboard.html` and `docs/docket.html` dropped the `@import` of Google Fonts. They
+  already had full system-font fallback stacks, so the visual degrades gracefully and
+  "self-contained / works offline" is now literally true (was a real overstatement).
+
+**Disclosed, deliberately not fixed** (production-grade, out of scope for a solo buildathon
+build) — added to `docs/eval_report.md`'s exception list as items 12–14:
+keyed/chained audit signatures + immutable external storage; a concurrency-safe,
+event-time-ordered feature store (the JSON file is single-process only); and a versioned
+artifact release with checksums + committed golden feature vectors to guard the
+notebook↔`src/` duplication that produced Bug 1.
+
+**Verified after.** `pytest tests/` → **70 passed** (was 41; +29 from the new
+store/model/engine/audit tests). `python scripts/demo_engine.py` → `ALL CHECKS PASSED`
+(now with the stronger "record hash does not match" tamper message). Bug tally for the
+project is 19 (17 self-found + these 2).
+
+Note on Codex's run: it reported it "could not verify the test suite locally" — its Python
+resolved to the Windows Store stub (`WindowsApps\...\python.exe`), not the project venv.
+That's its environment, not the repo; `.venv\Scripts\python.exe -m pytest` runs clean here.

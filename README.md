@@ -141,7 +141,10 @@ notebook can't demonstrate graceful degradation, an audit trail, or "would you t
 | A stored audit record is tampered with | `verify_and_replay()` re-derives the decision from stored inputs and flags a mismatch | `tests/test_audit.py`, `tests/test_engine.py` |
 
 Every one of these was broken on purpose and confirmed to recover correctly — not assumed
-from reading the code. Full account of every bug found this way (17, across the project):
+from reading the code. Full account of every bug found this way (19, across the project —
+including two real defects an external code review caught after the fact: a train/serve
+ddof mismatch on one feature, and a malformed-artifact path that crashed instead of
+failing closed):
 [`journal/`](journal/build-log.md).
 
 ## Honest limitations
@@ -192,8 +195,8 @@ notebooks/    Kaggle research record — EDA, feature engineering, tuning, cost 
 src/          The product — CPU-only decision engine. store/features/model/policy/
               audit/explain/narrative/engine.
 scripts/      demo_engine.py (proves the engine), llm_benchmark.py (the LLM-vs-XGBoost evidence)
-tests/        41 pytest tests against the real trained ensemble — idempotency, replay/tamper
-              detection, fail-closed paths, both version guards, cost-model boundaries, every LLM fallback mode
+tests/        70 pytest tests — idempotency, replay/tamper detection, fail-closed paths (missing
+              AND malformed artifacts), both version guards, batch-vs-online feature parity, cost-model boundaries, every LLM fallback mode
 artifacts/    Trained model + calibrator + sample data — not committed, see its README
 dashboard.html  The dashboard — self-contained, open directly in a browser, no server
 docs/         experiments.md (the measured ladder + both evidence experiments), plots,
@@ -208,7 +211,7 @@ PLAN.md       Execution — gates, pass/fail branches, risk register, live statu
 1. `python -m venv .venv`, then `.venv\Scripts\pip install -r requirements.txt` (Windows) or `.venv/bin/pip install -r requirements.txt` (Mac/Linux)
 2. Generate the artifacts by running `notebooks/06_cost_model_refined.py` in a Kaggle session (competition data attached, GPU on) and downloading the output files — exact list and destinations in [`artifacts/README.md`](artifacts/README.md). (`notebooks/04_cost_model.py` is the full historical record, including completed one-off diagnostics whose findings already live in `docs/experiments.md` — 06 is the consolidated, going-forward version and produces everything still needed.)
 3. `python scripts/demo_engine.py` — should print `ALL CHECKS PASSED`
-4. `pytest tests/` — 41 tests against the real trained ensemble: idempotency, replay/tamper detection, fail-closed behavior, both model version guards, the cost model's decision boundaries, and every LLM fallback path (timeout, garbage response, no API key) exercised without needing a live network call
+4. `pytest tests/` — 70 tests: idempotency, replay/tamper detection, fail-closed behavior (missing *and* malformed artifacts), both model version guards, batch-vs-online feature-parity golden vectors, the cost model's decision boundaries, and every LLM fallback path (timeout, garbage response, no API key) exercised without needing a live network call. The schema/fail-closed/parity/policy tests run on a bare clone; the rest need `artifacts/` populated (see step 2).
 5. Optional: `python scripts/llm_benchmark.py --kaggle-results artifacts/llm_benchmark_kaggle_results.json` to reproduce the LLM-vs-XGBoost comparison
 6. The dashboard needs no setup at all — open [`dashboard.html`](dashboard.html) directly in a browser
 

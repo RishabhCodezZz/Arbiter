@@ -110,3 +110,67 @@ def test_fallback_path_record_with_no_probability_still_replays(empty_audit_log)
     stored = empty_audit_log.lookup("1")
     ok, msg = verify_and_replay(stored, policy)
     assert ok, msg
+
+
+# --- P1-3: replay against the STORED cost params, and hash the decision fields --------
+
+_FULL_COST_PARAMS = {
+    "chargeback_fee": 500.0, "mdr_rate": 0.0236, "margin": 0.20, "p_stop": 0.60,
+    "p_dropoff": 0.15, "ltv_multiplier": 3.0, "usd_to_inr": 95.41,
+}
+
+
+def test_replay_uses_stored_cost_params_not_current_module_constants(empty_audit_log):
+    """A decision made under one set of cost parameters must replay against THOSE parameters
+    (stored in the record), not policy.py's current module constants — the record is meant
+    to be re-derivable from itself even after a merchant re-tunes margin or an FX rate is
+    corrected. Caught in review: verify_and_replay ignored record['cost_params'] entirely."""
+    amt_usd, p = 100.0, 0.35
+    # An extreme chargeback fee flips this borderline transaction's cost-optimal action.
+    weird_params = dict(_FULL_COST_PARAMS, chargeback_fee=5_000_000.0)
+    action_weird, values_weird = policy.decide_action(p, amt_usd, cost_params=weird_params)
+    action_default, _ = policy.decide_action(p, amt_usd)
+    assert action_weird != action_default, (
+        "test needs a probability/amount where the modified params change the action"
+    )
+
+    record = empty_audit_log.make_record(
+        transaction_id="cp1", model_version="test", feature_vector={"_amount": amt_usd},
+        raw_prob=p, calibrated_prob=p, cost_params=weird_params, action=action_weird,
+        action_values=values_weird, latency_ms=1.0, fallbacks=[],
+    )
+    empty_audit_log.append(record)
+    stored = empty_audit_log.lookup("cp1")
+
+    ok, msg = verify_and_replay(stored, policy)
+    assert ok, f"replay must use the stored cost params and reproduce '{action_weird}': {msg}"
+
+
+def test_tampered_cost_params_are_detected_by_record_hash(empty_audit_log):
+    action, values = policy.decide_action(0.2, 100.0, cost_params=_FULL_COST_PARAMS)
+    record = empty_audit_log.make_record(
+        transaction_id="cp2", model_version="test", feature_vector={"_amount": 100.0},
+        raw_prob=0.2, calibrated_prob=0.2, cost_params=_FULL_COST_PARAMS, action=action,
+        action_values=values, latency_ms=1.0, fallbacks=[],
+    )
+    empty_audit_log.append(record)
+    stored = dict(empty_audit_log.lookup("cp2"))
+    stored["cost_params"] = dict(stored["cost_params"], margin=0.99)  # altered after the fact
+    ok, msg = verify_and_replay(stored, policy)
+    assert not ok and "TAMPER" in msg
+
+
+def test_tampered_probability_alone_is_detected_by_record_hash(empty_audit_log):
+    """Changing only the stored probability (leaving the feature vector and action alone)
+    was previously undetectable — the old hash covered the feature vector only."""
+    action, values = policy.decide_action(0.05, 100.0)
+    record = empty_audit_log.make_record(
+        transaction_id="cp3", model_version="test", feature_vector={"_amount": 100.0},
+        raw_prob=0.05, calibrated_prob=0.05, cost_params={}, action=action,
+        action_values=values, latency_ms=1.0, fallbacks=[],
+    )
+    empty_audit_log.append(record)
+    stored = dict(empty_audit_log.lookup("cp3"))
+    stored["calibrated_probability"] = 0.99  # action left untouched
+    ok, msg = verify_and_replay(stored, policy)
+    assert not ok, "a lone probability edit must be caught by the record hash"

@@ -13,7 +13,12 @@ import shutil
 
 import pytest
 
-from src.model import FraudModel, LightGBMVersionMismatchError, XGBoostVersionMismatchError
+from src.model import (
+    FraudModel,
+    LightGBMVersionMismatchError,
+    ModelUnavailableError,
+    XGBoostVersionMismatchError,
+)
 from tests.conftest import requires_real_artifacts
 
 _ARTIFACT_FILES = ("model.json", "calibrator.json", "model_lgb.txt", "calibrator_lgb.json",
@@ -92,3 +97,60 @@ def test_lightgbm_version_mismatch_override_allows_loading(tmp_path):
 
     model = FraudModel(str(broken_dir), allow_version_mismatch=True)
     assert model.lgb_booster is not None
+
+
+# --- malformed (not just missing) artifacts must ALSO fail closed --------------------
+# These don't need the real model files: the manifest schema is validated before any
+# model is loaded, so a bad manifest raises ModelUnavailableError first. Caught in review:
+# `self.manifest["features"]` was outside the try/except, so a `{}` manifest raised a bare
+# KeyError past engine.py's `except ModelUnavailableError`, crashing engine construction.
+
+@pytest.mark.parametrize("bad_manifest", [
+    {},                                                   # empty object
+    {"categorical_columns": [], "categorical_mappings": {}},   # missing "features"
+    {"features": [], "categorical_columns": [], "categorical_mappings": {}},  # empty list
+    {"features": "not-a-list", "categorical_columns": [], "categorical_mappings": {}},
+    [1, 2, 3],                                            # not even an object
+])
+def test_malformed_manifest_raises_model_unavailable(tmp_path, bad_manifest):
+    d = tmp_path / "artifacts_bad_manifest"
+    d.mkdir()
+    with open(d / "feature_manifest.json", "w") as f:
+        json.dump(bad_manifest, f)
+    with pytest.raises(ModelUnavailableError):
+        FraudModel(str(d))
+
+
+def test_unparseable_manifest_raises_model_unavailable(tmp_path):
+    d = tmp_path / "artifacts_unparseable_manifest"
+    d.mkdir()
+    (d / "feature_manifest.json").write_text("{ this is not json")
+    with pytest.raises(ModelUnavailableError):
+        FraudModel(str(d))
+
+
+def test_engine_survives_a_malformed_manifest(tmp_path):
+    """The whole point: a `{}` manifest must land the Engine in the fail-closed state
+    (self.model is None), not crash __init__ with an uncaught KeyError."""
+    from src.engine import Engine
+
+    d = tmp_path / "artifacts_bad_manifest_engine"
+    d.mkdir()
+    (d / "feature_manifest.json").write_text("{}")
+    e = Engine(
+        artifacts_dir=str(d),
+        store_path=str(tmp_path / "store.json"),
+        audit_path=str(tmp_path / "audit.jsonl"),
+    )
+    assert e.model is None
+
+
+@requires_real_artifacts
+@pytest.mark.parametrize("bad_calib", ['{}', '{"coef": 1.0}', '{"coef": "x", "intercept": 0.0}', 'nope'])
+def test_malformed_calibrator_raises_model_unavailable(tmp_path, bad_calib):
+    d = tmp_path / "artifacts_bad_calib"
+    d.mkdir()
+    _copy_real_artifacts(d)
+    (d / "calibrator.json").write_text(bad_calib)
+    with pytest.raises(ModelUnavailableError):
+        FraudModel(str(d))

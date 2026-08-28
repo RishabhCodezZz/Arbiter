@@ -32,6 +32,10 @@ class ClientStats:
         return self.amt_sum / self.n if self.n > 0 else None
 
     def std(self) -> Optional[float]:
+        """POPULATION standard deviation (ddof=0) — deliberate, do NOT change to match
+        CoarseStats.std(). This feeds uid_amt_std_prior, which the notebooks build as
+        `sqrt(sumsq/n - mean**2)` (ddof=0), so this matches training. The ambiguity feature
+        is the opposite case (built ddof=1 in training) — see CoarseStats.std()."""
         if self.n == 0:
             return None
         var = (self.amt_sumsq / self.n) - self.mean() ** 2
@@ -48,11 +52,20 @@ class CoarseStats:
     d15n_sumsq: float = 0.0
 
     def std(self) -> Optional[float]:
+        """SAMPLE standard deviation (ddof=1) — must match training exactly. The notebooks
+        build this feature with `s.expanding().std()`, and pandas' default is ddof=1, so
+        this uses ddof=1 too. An earlier version divided by n (population/ddof=0), which
+        produced a different value for the same history (e.g. [0, 2] -> 1.0 here vs 1.4142
+        in training) — a real train/serve skew on a feature the shipped ensemble consumes,
+        caught in review. Returns None for n<2, matching `expanding().std()` (NaN for a
+        single observation). NOTE: `ClientStats.std()` below deliberately stays ddof=0
+        because *its* feature (uid_amt_std_prior) is built ddof=0 in the notebooks too."""
         if self.n < 2:
             return None
-        mean = self.d15n_sum / self.n
-        var = (self.d15n_sumsq / self.n) - mean ** 2
-        return math.sqrt(max(var, 0.0))
+        # numerically stabler than (sumsq/n - mean**2): sum of squared deviations / (n-1)
+        sum_sq_dev = self.d15n_sumsq - (self.d15n_sum ** 2) / self.n
+        var = max(sum_sq_dev, 0.0) / (self.n - 1)
+        return math.sqrt(var)
 
 
 class ClientHistoryStore:

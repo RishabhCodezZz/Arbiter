@@ -116,3 +116,35 @@ def test_engine_starts_with_no_model_at_all(tmp_path):
         audit_path=str(tmp_path / "audit.jsonl"),
     )
     assert e.model is None
+
+
+def _no_model_engine(tmp_path):
+    from src.engine import Engine as _Engine
+    empty_dir = tmp_path / "empty_artifacts_boundary"
+    empty_dir.mkdir()
+    return _Engine(
+        artifacts_dir=str(empty_dir),
+        store_path=str(tmp_path / "store.json"),
+        audit_path=str(tmp_path / "audit.jsonl"),
+    )
+
+
+@pytest.mark.parametrize("bad_txn", [{}, {"TransactionAmt": 100.0}, {"TransactionID": None}, "not-a-dict"])
+def test_missing_transaction_id_raises_a_clear_error(tmp_path, bad_txn):
+    """A request with no TransactionID can't be made idempotent or audited — the boundary
+    must reject it with a clear ValueError, not a bare KeyError from deep in str(txn[...])."""
+    e = _no_model_engine(tmp_path)
+    with pytest.raises(ValueError):
+        e.decide(bad_txn)
+
+
+@requires_real_artifacts
+def test_unrecoverable_feature_build_still_fails_closed(engine):
+    """A non-numeric TransactionDT breaks features.build() AND features.build_degraded().
+    The engine must still return a fail-closed decision (never crash, never silent-allow),
+    with the double failure logged."""
+    d = engine.decide({"TransactionID": "boundary-1", "TransactionDT": "not-a-number",
+                        "TransactionAmt": 250.0})
+    assert d.action in ("step-up", "block")
+    assert any(f.startswith("degraded_build_failed:") for f in d.fallbacks_triggered)
+    assert d.calibrated_probability is None
