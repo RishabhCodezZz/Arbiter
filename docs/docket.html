@@ -216,7 +216,7 @@
       <div class="ledger-cell"><div class="v">0.5597</div><div class="l">PR-AUC, 16.1× random</div></div>
       <div class="ledger-cell"><div class="v">100.16%</div><div class="l">Value, hard-verified</div></div>
       <div class="ledger-cell"><div class="v">3.65×</div><div class="l">Beats a real LLM at this job</div></div>
-      <div class="ledger-cell"><div class="v">17</div><div class="l">Bugs caught before shipping</div></div>
+      <div class="ledger-cell"><div class="v">20</div><div class="l">Bugs caught before shipping</div></div>
     </div>
   </section>
 
@@ -250,7 +250,7 @@
     </div>
     <div class="record">
       <div class="k">Where AI sits</div>
-      <div><div class="choice">Numbers by machine learning, words by language model</div><p>Deciding allow/step-up/block is a numbers problem — put to a real head-to-head test in Exhibit 07, not assumed. Explaining <em>why</em>, in a sentence a reviewer reads in three seconds, is a language problem. The rule that separates them: the language model never gets a vote.</p></div>
+      <div><div class="choice">Numbers by machine learning, words by language model</div><p>Deciding allow/step-up/block is a numbers problem — put to a real head-to-head test in Exhibit 08, not assumed. Explaining <em>why</em>, in a sentence a reviewer reads in three seconds, is a language problem. The rule that separates them: the language model never gets a vote.</p></div>
     </div>
   </section>
 
@@ -306,8 +306,21 @@
         <p>A real dashboard — not slides. A slider that moves real rupees as you drag it; a live queue that scores real held-out payments in the browser. Used it, rather than trusting it, and found two more real bugs that way: one legitimate decision displaying like a glitch, one view crashing from a missing dependency. Both fixed, both re-verified by using it again.</p>
       </div>
       <div class="dentry">
-        <div class="dhead"><span class="dtag">DOCS</span><h3>Wrote down what it still can't do</h3><span class="verdict-chip watch">in progress</span></div>
+        <div class="dhead"><span class="dtag">DOCS</span><h3>Wrote down what it still can't do</h3><span class="verdict-chip good">complete</span></div>
         <p>The eval report, the honest exception list, the README, the architecture doc — and, in writing them, two more small gaps caught by checking rather than assuming: a claimed plot that had never actually been downloaded, a dependency comment that was quietly wrong. Fixed both, the same way as everything above.</p>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">ENSEMBLE</span><h3>Tried six ways to beat it. Five said no.</h3><span class="verdict-chip good">one real win</span></div>
+        <p>Rather than assume the shipped model was finished, six separate attempts were made to beat it. Harder regularisation: <em>worse</em>. Per-segment probability tuning: fixed the exact problem it targeted, lost more money elsewhere, rejected. Tuning a second model family: worse again — the third independent time that tuning against the validation month backfired here. Three extra model families averaged in: a large regression. Only one worked — averaging in a second, deliberately <em>untuned</em> model — and it was kept only after confirming the gain survives contact with the real rupee policy, not just the accuracy metric.</p>
+        <div class="dfig">
+          <div class="f"><div class="fl">experiments run</div><div class="fv">6</div></div>
+          <div class="f"><div class="fl">adopted</div><div class="fv">1</div></div>
+          <div class="f"><div class="fl">rupee gain, confirmed</div><div class="fv" style="color:var(--seal-bright)">+₹13.58L</div></div>
+        </div>
+      </div>
+      <div class="dentry">
+        <div class="dhead"><span class="dtag">REVIEW</span><h3>Handed it to an outside reviewer. Twice.</h3><span class="verdict-chip good">3 real defects</span></div>
+        <p>With the build already called done, an independent agent reviewed the whole repository — then reviewed it again after the first round of fixes. Both rounds found something real, including one defect <em>inside the first round's own fix</em>. Three genuine bugs, all fixed with regression tests; three production-grade gaps deliberately left open and written into the exception list instead of quietly omitted. Detailed in Exhibit 07.</p>
       </div>
     </div>
   </section>
@@ -364,7 +377,7 @@
     <div class="concept">
       <h4>Why "no peeking at the future" is the whole argument</h4>
       <p>A gateway decides <em>now</em>, with zero knowledge of what a customer does next. Any technique quietly using later transactions to help score an earlier one looks brilliant in testing and fails the moment it meets production — because in production, later hasn't happened yet.</p>
-      <p>This is the leaderboard-winning solution's actual mechanism, used on purpose in a file that's already sitting on disk. Exhibit 07 builds the honest version and the cheating version side by side and prices the difference: about 1%. Honesty is nearly free here.</p>
+      <p>This is the leaderboard-winning solution's actual mechanism, used on purpose in a file that's already sitting on disk. Exhibit 08 builds the honest version and the cheating version side by side and prices the difference: about 1%. Honesty is nearly free here.</p>
     </div>
   </section>
 
@@ -380,12 +393,39 @@
     <div class="fail-row"><div class="what">DUPLICATE / REPLAYED TRANSACTION ID</div><div class="resp">Returns the original verdict, unchanged. Verified: same ID submitted twice, byte-identical result.</div></div>
     <div class="fail-row"><div class="what">A STORED RECORD IS TAMPERED WITH</div><div class="resp">Re-derives the verdict from its own stored inputs and flags the mismatch — the record is provably honest, not just claimed to be.</div></div>
 
-    <p style="margin-top:28px;"><strong>17 real bugs</strong> caught this way across the build, every one logged as it was found, none of them shipped.</p>
+    <p style="margin-top:28px;"><strong>20 real bugs</strong> caught this way across the build, every one logged as it was found, none of them shipped. The three that mattered most are in the next exhibit.</p>
   </section>
 
-  <!-- ============ EXHIBIT 07 — CROSS-EXAMINATION ============ -->
+  <!-- ============ EXHIBIT 07 — THE BUGS THAT MATTERED ============ -->
   <section class="rv">
-    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;07</span><h2>Cross-examination</h2><div class="rule"></div></div>
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;07</span><h2>The bugs that mattered</h2><div class="rule"></div></div>
+    <p>Twenty real defects across this build; none shipped. Three are worth the page — each one was <em>silent</em>, each would have made a number in this docket false, and each was caught by running something rather than reading it and deciding it looked correct.</p>
+
+    <div class="outcome-row">
+      <div class="outcome-cell"><div class="t">Found by own testing</div><div class="v">17</div></div>
+      <div class="outcome-cell"><div class="t">Found by outside review</div><div class="v">3</div></div>
+      <div class="outcome-cell"><div class="t">Shipped</div><div class="v" style="color:var(--good)">0</div></div>
+    </div>
+
+    <div class="record">
+      <div class="k">23× · silent</div>
+      <div><div class="choice">The same input, two different answers</div><p>After moving into a clean environment, an already-passing test reported a different fraud probability. Chased rather than dismissed as noise: the locally installed model library returned a <strong>23× different probability on byte-identical input</strong> — no error, no warning, nothing. Every number that earlier test run had reported was computed with the wrong engine version. Fixed twice over — a hard version pin, and a runtime guard that refuses to score at all on a mismatch — then the guard itself was deliberately broken to confirm it actually fires.</p></div>
+    </div>
+    <div class="record">
+      <div class="k">Train ≠ serve</div>
+      <div><div class="choice">One number, computed two different ways</div><p>Found by an outside reviewer after the build was already called done: the live engine computed one feature's spread with a different divisor than the training pipeline used. For a customer history of <span class="mono">[0, 2]</span> that is <span class="mono">1.0</span> in production against <span class="mono">1.4142</span> in training — on a feature the shipped model genuinely consumes. Fixed, and pinned by a test that computes both versions and demands they agree.</p></div>
+    </div>
+    <div class="record">
+      <div class="k">Silent allow</div>
+      <div><div class="choice">A safety check that wasn't one</div><p>The second review round found the first round's own fix incomplete. The guard used a plain numeric conversion — which accepts <span class="mono">NaN</span> without complaint. One corrupt coefficient would have turned every probability into <span class="mono">NaN</span>, and the decision step, comparing three of them, would have silently returned <strong>allow</strong> — the exact opposite of failing closed, on every payment. Now rejected at three independent layers: at load, at scoring, and at the decision itself.</p></div>
+    </div>
+
+    <p style="margin-top:26px;">The production-grade gaps that were <em>not</em> closed — keyed audit signatures, a concurrency-safe feature store, a versioned artifact release with checksums — are written into the exception list rather than quietly omitted.</p>
+  </section>
+
+  <!-- ============ EXHIBIT 08 — CROSS-EXAMINATION ============ -->
+  <section class="rv">
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;08</span><h2>Cross-examination</h2><div class="rule"></div></div>
     <p>The two claims this project actually has to defend, tested rather than asserted.</p>
 
     <h4 style="margin:8px 0 10px; font-size:1.15rem;">Would an LLM just do this job?</h4>
@@ -410,9 +450,9 @@
     <p style="margin-top:14px;">Total gap: <strong>+0.0066 PR-AUC</strong> — about 1.2% relative. A genuine surprise found along the way: one of the two leaky techniques actually made PR-AUC <em>worse</em>, not better, for the same reason isotonic calibration did earlier in the build — reported as found, not smoothed into a cleaner-sounding story.</p>
   </section>
 
-  <!-- ============ EXHIBIT 08 — NOT JUST A NOTEBOOK ============ -->
+  <!-- ============ EXHIBIT 09 — NOT JUST A NOTEBOOK ============ -->
   <section class="rv">
-    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;08</span><h2>Not just a notebook</h2><div class="rule"></div></div>
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;09</span><h2>Not just a notebook</h2><div class="rule"></div></div>
     <div class="diff">
       <div class="col no">
         <div class="h">The default entry</div>
@@ -437,9 +477,9 @@
     </div>
   </section>
 
-  <!-- ============ EXHIBIT 09 — EXHIBIT A: THE TRANSCRIPT ============ -->
+  <!-- ============ EXHIBIT 10 — EXHIBIT A: THE TRANSCRIPT ============ -->
   <section class="rv">
-    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;09</span><h2>Exhibit A — the transcript</h2><div class="rule"></div></div>
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;10</span><h2>Exhibit A — the transcript</h2><div class="rule"></div></div>
     <p>Built in direct collaboration with Claude, start to finish. Three excerpts, paraphrased from the real working session, chosen because each one is a moment the reasoning genuinely turned — not because they make the build look effortless.</p>
 
     <div class="exhibit-card">
@@ -456,7 +496,7 @@
       <div class="body">
         <div class="xline"><div class="xwho">Builder</div><div class="xtext user">"Nah, let's not build the leaky comparison model — we already benchmarked the LLM, that feels like enough."</div></div>
         <div class="xline"><div class="xwho">Claude</div><div class="xtext">Worth reconsidering once: this was marked "protect this, it is the differentiator" at the very start. Without it, "the winner's solution can't ship" stays an assertion instead of a measured number — and the causal feature machinery already exists, so it's hours, not a new subsystem.</div></div>
-        <div class="xresolve">Built anyway. Became Exhibit 07's second finding — the one that actually surprised both of us.</div>
+        <div class="xresolve">Built anyway. Became Exhibit 08's second finding — the one that actually surprised both of us.</div>
       </div>
     </div>
 
@@ -472,9 +512,9 @@
 
   <!-- ============ CLOSE ============ -->
   <section class="rv">
-    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;10</span><h2>Entered into the record, plainly</h2><div class="rule"></div></div>
-    <p><strong>Borrows heavily from the 1st-place IEEE-CIS solution, and says so.</strong> Taken: the identity-key construction, card-level chargeback label semantics, group aggregates as features, time-consistency screening, and the "unseen clients, not time drift" diagnosis. Diverged, deliberately: causal aggregates instead of full-history ones, no future-leaking post-processing, a cost-minimizing objective instead of an AUC-maximizing one, and a three-way verdict instead of a score. Their model wins the raw Kaggle task, by design — different games, see Exhibit 07.</p>
-    <p><strong>What it still can't do, stated rather than buried:</strong> card-level identity reconstruction was attempted and scoped out, not solved. Step-up outcomes are modeled from cited industry rates, not measured on this dataset — quantified at 0.05% of the headline, not hidden. Built on US card-not-present data; the method transfers to Razorpay's UPI-heavy mix, the specific features would need to be re-derived. Full account: the eval report and the docket in the repository.</p>
+    <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;11</span><h2>Entered into the record, plainly</h2><div class="rule"></div></div>
+    <p><strong>Borrows heavily from the 1st-place IEEE-CIS solution, and says so.</strong> Taken: the identity-key construction, card-level chargeback label semantics, group aggregates as features, time-consistency screening, and the "unseen clients, not time drift" diagnosis. Diverged, deliberately: causal aggregates instead of full-history ones, no future-leaking post-processing, a cost-minimizing objective instead of an AUC-maximizing one, and a three-way verdict instead of a score. Their model wins the raw Kaggle task, by design — different games, see Exhibit 08.</p>
+    <p><strong>What it still can't do, stated rather than buried:</strong> card-level identity reconstruction was attempted and scoped out, not solved. Step-up outcomes are modeled from cited industry rates, not measured on this dataset — quantified rather than hidden, and for the shipped ensemble that modeled contribution is actually slightly <em>negative</em> (−0.16%), which is why more than 100% of the headline is computed from real fraud labels. Built on US card-not-present data; the method transfers to Razorpay's UPI-heavy mix, the specific features would need to be re-derived. Fourteen such limitations are listed in full in the repository's exception list, alongside the engineering journal every entry above was drawn from.</p>
   </section>
 
   <footer>
