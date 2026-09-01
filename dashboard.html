@@ -269,7 +269,15 @@ function linePath(xs, ys, w, h, pad, xmin, xmax, ymin, ymax){
 (function(){
   const svg = document.getElementById('pr-chart');
   const w=420,h=260,pad=34;
-  const r = DATA.pr_curve_ds.recall, p = DATA.pr_curve_ds.precision;
+  // dashboard_data.json exposes the full-resolution curve as `pr_curve`
+  // (older exports called a pre-downsampled copy `pr_curve_ds`). Accept either,
+  // and thin a large array down to ~600 points so the SVG path stays light.
+  const src = DATA.pr_curve_ds || DATA.pr_curve;
+  const step = Math.max(1, Math.ceil(src.recall.length / 600));
+  const r = [], p = [];
+  for (let i = 0; i < src.recall.length; i += step){ r.push(src.recall[i]); p.push(src.precision[i]); }
+  const last = src.recall.length - 1;
+  if (last % step !== 0){ r.push(src.recall[last]); p.push(src.precision[last]); }
   const {d} = linePath(r, p, w, h, pad, 0, 1, 0, 1);
   svg.innerHTML = `
     <line x1="${pad}" y1="${h-pad}" x2="${w-10}" y2="${h-pad}" stroke="var(--line-strong)"/>
