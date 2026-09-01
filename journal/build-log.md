@@ -1,7 +1,7 @@
 <!--
 Engineering log, append-only, written as the work happened — oldest entry first. Numbers
 evolve down the page as the project progressed (the test suite grew 13 → 36 → 41 → 70 → 98;
-the bug tally reached 20 = 17 self-found + 3 from automated code review; the shipped model
+the bug tally reached 23 = 17 self-found + 6 from three rounds of automated code review; the shipped model
 went single-XGBoost → 2-model ensemble). Each figure is correct as of its own entry, not a
 contradiction with a later one. Current-state numbers live in README.md, docs/eval_report.md
 and CLAUDE.md §13 — this file is the trail of how they were reached.
@@ -1714,3 +1714,59 @@ confirmed. Project bug tally: 20 (17 self-found + 3 from the two review rounds).
 Codex's environment was still broken (its Python resolves to the WindowsApps stub, not the
 venv) so it again couldn't run the suite itself — noted, but the repo's own venv runs it
 clean.
+
+## Automated AI code review — round 3: version-guard bypass, unhashed rationale, and two disclosed gaps hardened
+
+**How it surfaced.** A third review pass over the whole repo, this time returning six items
+across two "really required" and four "medium". Verified each against the code first.
+
+**Bug (d) — the version guard could be silently bypassed.** `model.py`'s check was
+`if trained_version is not None and trained_version != running_version`. A manifest that
+simply **omits** `xgboost_version` / `lightgbm_version` — a malformed/incomplete manifest,
+the same class as the round-1 `{}` manifest and round-2 NaN calibrator — makes
+`trained_version` `None`, so the whole guard is skipped and the model scores with **no
+version check at all**. That is a quiet way straight back into the 23x silent-wrong-
+probability bug the guard exists to stop. Fixed: a missing version now fails closed exactly
+like a mismatch (`XGBoostVersionMismatchError` / `LightGBMVersionMismatchError`), still
+overridable with `allow_version_mismatch=True` for an operator who has confirmed it's safe.
+`tests/test_model.py` gained `test_missing_xgboost_version_refuses_to_score`,
+`test_missing_lightgbm_version_refuses_to_score`, and an override test.
+
+**Bug (e) — the decision's rupee rationale was not tamper-evident.** `action_values` (the
+allow/step-up/block value breakdown shown to a reviewer) was stored in every record but was
+**not** in `record_hash` and not re-derived on replay — so someone could inflate the
+"block" value tenfold, leave the action/probability/feature-vector alone, and both the hash
+check and the replay would still pass. Fixed two ways, matching the round-2 pattern:
+`action_values` is now in `_hash_record`, **and** `verify_and_replay()` re-derives it from
+the stored inputs and compares (`math.isclose`). `tests/test_audit.py::test_tampered_action_values_are_detected`.
+
+**Bug (f) — a doc contradiction.** `src/model.py`'s docstring, `artifacts/README.md`,
+`CLAUDE.md` §4 and a notebook-06 comment all called the ensemble "both untuned" — but the
+XGBoost member IS notebook 03's V4 Optuna-tuned model; only LightGBM is untuned. `README.md`
+was already correct. Fixed everywhere; the shipped `MODEL_VERSION` string and the manifest's
+`model_description` were already right ("XGBoost + untuned LightGBM").
+
+**Item 13 (concurrency) — partly hardened, not closed.** Two cheap, real wins without a
+full transactional-store rewrite: (1) `ClientHistoryStore.save()` is now an atomic
+temp-file + `os.replace()` — a crash or a racing writer can no longer leave a truncated,
+unparseable history file. (On this OneDrive-synced repo `os.replace` intermittently raised
+`PermissionError` from a sync-client/AV handle, so it retries with a 50ms backoff — caught
+by the demo failing, fixed, 4/4 clean runs after.) (2) `engine.decide()` now holds an
+in-process `threading.RLock` around the idempotency check-and-commit and the history write,
+with a **commit-time re-check** so the expensive scoring still runs unlocked: 8 threads
+racing the same `transaction_id` now write exactly one audit record and count the client's
+history once (`tests/test_engine.py::test_concurrent_decides_same_id_produce_one_record`).
+Cross-process / multi-host and event-time ordering are still genuinely out of scope — item
+13 rewritten to say exactly what's now safe (one multi-threaded process) and what isn't.
+
+**Item 14 (artifact reproducibility) — partly hardened.** `FraudModel` now computes a
+SHA-256 of every artifact it loads (`self.artifact_sha256`); `demo_engine.py` prints them
+so a reproducer can record and compare them. And if a manifest ever records an
+`artifact_checksums` map, the loader hard-verifies it and fails closed on a mismatch —
+forward-compatible with a proper release manifest without a Kaggle re-run.
+`tests/test_model.py::test_artifact_checksum_mismatch_fails_closed`.
+
+**Verified.** `pytest tests/` → **105 passed** (was 98; +7 across store/model/audit/engine).
+`python scripts/demo_engine.py` → `ALL CHECKS PASSED` (now also prints the artifact
+checksums). `py_compile` clean. Project bug tally: **23** (17 self-found + 6 across three
+review rounds).

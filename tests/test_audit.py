@@ -174,3 +174,22 @@ def test_tampered_probability_alone_is_detected_by_record_hash(empty_audit_log):
     stored["calibrated_probability"] = 0.99  # action left untouched
     ok, msg = verify_and_replay(stored, policy)
     assert not ok, "a lone probability edit must be caught by the record hash"
+
+
+def test_tampered_action_values_are_detected(empty_audit_log):
+    """The allow/step-up/block rupee breakdown shown to a reviewer as the rationale must be
+    tamper-evident too — editing it while leaving the action, probability and feature vector
+    alone was previously undetectable (action_values was stored but not hashed or replayed).
+    Caught in review."""
+    action, values = policy.decide_action(0.2, 100.0, cost_params=_FULL_COST_PARAMS)
+    record = empty_audit_log.make_record(
+        transaction_id="av1", model_version="test", feature_vector={"_amount": 100.0},
+        raw_prob=0.2, calibrated_prob=0.2, cost_params=_FULL_COST_PARAMS, action=action,
+        action_values=values, latency_ms=1.0, fallbacks=[],
+    )
+    empty_audit_log.append(record)
+    stored = dict(empty_audit_log.lookup("av1"))
+    # inflate the "block" rationale by an order of magnitude, everything else untouched
+    stored["action_values"] = dict(stored["action_values"], block=stored["action_values"]["block"] * 10 - 1)
+    ok, msg = verify_and_replay(stored, policy)
+    assert not ok and ("TAMPER" in msg or "MISMATCH" in msg), msg

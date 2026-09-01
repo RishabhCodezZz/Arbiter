@@ -39,6 +39,16 @@ def _corrupt_manifest_version(dest_dir, **overrides):
         json.dump(manifest, f)
 
 
+def _drop_manifest_keys(dest_dir, *keys):
+    manifest_path = dest_dir / "feature_manifest.json"
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+    for k in keys:
+        manifest.pop(k, None)
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f)
+
+
 @requires_real_artifacts
 def test_both_ensemble_members_load_with_correct_versions(tmp_path):
     """Sanity check the two mismatch tests below depend on: an UNMODIFIED copy of the real
@@ -97,6 +107,57 @@ def test_lightgbm_version_mismatch_override_allows_loading(tmp_path):
 
     model = FraudModel(str(broken_dir), allow_version_mismatch=True)
     assert model.lgb_booster is not None
+
+
+# --- a MISSING version field must fail closed too, not silently skip the guard ----------
+# Caught in review: the guard was `if trained_version is not None and mismatch` — a manifest
+# that simply omits `xgboost_version` / `lightgbm_version` would load with NO version check
+# at all, a quiet way back into the 23x silent-wrong-probability bug.
+
+@requires_real_artifacts
+def test_missing_xgboost_version_refuses_to_score(tmp_path):
+    d = tmp_path / "artifacts_no_xgb_version"
+    d.mkdir()
+    _copy_real_artifacts(d)
+    _drop_manifest_keys(d, "xgboost_version")
+    with pytest.raises(XGBoostVersionMismatchError):
+        FraudModel(str(d))
+
+
+@requires_real_artifacts
+def test_missing_lightgbm_version_refuses_to_score(tmp_path):
+    d = tmp_path / "artifacts_no_lgb_version"
+    d.mkdir()
+    _copy_real_artifacts(d)
+    _drop_manifest_keys(d, "lightgbm_version")
+    with pytest.raises(LightGBMVersionMismatchError):
+        FraudModel(str(d))
+
+
+@requires_real_artifacts
+def test_missing_versions_can_still_be_overridden(tmp_path):
+    """The escape hatch works for a missing field, same as for a mismatched one."""
+    d = tmp_path / "artifacts_no_versions_override"
+    d.mkdir()
+    _copy_real_artifacts(d)
+    _drop_manifest_keys(d, "xgboost_version", "lightgbm_version")
+    model = FraudModel(str(d), allow_version_mismatch=True)
+    assert model.xgb_booster is not None and model.lgb_booster is not None
+
+
+@requires_real_artifacts
+def test_artifact_checksum_mismatch_fails_closed(tmp_path):
+    """If the manifest records expected artifact checksums, a swapped/corrupt file fails
+    closed — same principle as the version guard. (The Kaggle export doesn't populate this
+    yet; this proves the check works if/when it does.)"""
+    d = tmp_path / "artifacts_bad_checksum"
+    d.mkdir()
+    _copy_real_artifacts(d)
+    _corrupt_manifest_version(
+        d, artifact_checksums={"model.json": "0" * 64}
+    )
+    with pytest.raises(ModelUnavailableError):
+        FraudModel(str(d))
 
 
 # --- malformed (not just missing) artifacts must ALSO fail closed --------------------

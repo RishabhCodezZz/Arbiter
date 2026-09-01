@@ -303,7 +303,7 @@ problem here, and the largest gap should drive the response. The 60-trial Optuna
 already searched the regularization space (`reg_lambda`, `reg_alpha`, `max_depth`,
 `min_child_weight`) against a genuine validation objective; re-opening tuning this late
 would cascade into re-verifying every downstream artifact (cost model, dashboard, docket,
-audit log, 98 tests) that depends on the model artifact, for an uncertain and likely
+audit log, 105 tests) that depends on the model artifact, for an uncertain and likely
 modest payoff against the *smaller* of two measured gaps. The dominant gap — temporal
 mismatch — is a property of the problem (new clients appearing over time), not a model
 defect regularization can fix; the project's existing responses to it (causal per-client
@@ -363,8 +363,8 @@ panel will find it anyway if it isn't. (This list has moved several times: down 
 when the false-positive-cost estimate — previously item 5 — was resolved with an exact
 number in §4; up to 8 with the error-analysis variance finding; up to 9 with the
 segment-calibration confound; up to 10 with the ensemble-rebuild granular-recompute gap;
-up to 14 after two rounds of automated AI code review found three real defects (all fixed —
-item 11) and flagged three production gaps left open on purpose (items 12–14). Same
+up to 14 after three rounds of automated AI code review found six real defects (all fixed —
+item 11) and flagged three production gaps, two of them partly hardened in round 3 (items 12–14). Same
 discipline every time: fix it and say so, don't quietly renumber and hope no one compares
 versions.)
 
@@ -455,9 +455,9 @@ versions.)
     a fresh Kaggle export of full-feature rows for a risk-inclusive sample — not done here
     rather than faked with placeholder entries.
 
-11. **Two rounds of automated AI code review (Codex) ran over the repo after the migration;
-    they found three real defects (all fixed) and flagged production gaps deliberately left
-    open (items 12–14).**
+11. **Three rounds of automated AI code review (Codex) ran over the repo after the
+    migration; they found six real defects (all fixed) and flagged production gaps
+    deliberately left open — partly hardened in round 3 (items 12–14).**
     *Round 1 — fixed:* (a) a train/serve skew — the online `CoarseStats.std()` used
     population std (ddof=0) while training builds `uid_ambiguity_std_prior` with
     `expanding().std()` (ddof=1); for a history of `[0, 2]` that is `1.0` vs `1.4142` on a
@@ -476,12 +476,34 @@ versions.)
     negative) is rejected at the request boundary; and manifest validation now checks
     `categorical_columns` / `categorical_mappings` types and that every categorical column
     has its own mapping object (a missing one silently turned inputs into the `-1` sentinel).
-    *Also, across both rounds:* missing `TransactionID` → clear `ValueError` not `KeyError`;
+    *Round 3 — fixed:* (d) the version guard was `if trained_version is not None and
+    mismatch` — a manifest that simply **omits** `xgboost_version` / `lightgbm_version`
+    loaded with **no version check at all**, a silent way back into the 23x wrong-probability
+    bug. Now a missing version fails closed exactly like a mismatch (overridable with
+    `allow_version_mismatch=True`), pinned by `tests/test_model.py`. (e) `action_values` —
+    the allow/step-up/block rupee breakdown shown to a reviewer as the decision's rationale —
+    was stored but **not** in `record_hash` and not re-checked on replay, so it could be
+    altered undetectably. Now hashed *and* independently re-derived in `verify_and_replay()`.
+    (f) a doc contradiction — three files and a notebook comment called the ensemble "both
+    untuned" when the XGBoost member is the V4 Optuna-tuned model (LightGBM is the untuned
+    one); corrected everywhere.
+    *Round 3 — partly hardened (items 13–14):* `ClientHistoryStore.save()` is now an atomic
+    temp-file + `os.replace()` (no more truncated history file on a crash / racing writer);
+    `engine.decide()` takes an in-process `threading.RLock` around the idempotency
+    check-and-commit and the history write, with a commit-time re-check, so N threads racing
+    the same `transaction_id` in one process write exactly one record and count the client's
+    history once (`tests/test_engine.py`); `FraudModel` now fingerprints every loaded
+    artifact with SHA-256 (`demo_engine.py` prints them) and, if a manifest ever records
+    `artifact_checksums`, verifies them and fails closed on a mismatch. Cross-process /
+    multi-host transactionality and event-time ordering remain out of scope (item 13); a
+    published release asset with checksums remains a follow-up (item 14).
+    *Also, across the rounds:* missing `TransactionID` → clear `ValueError` not `KeyError`;
     double feature-build failure → fail closed; the audit `record_hash` covers action /
-    probabilities / cost params / degraded (not just the feature vector); `verify_and_replay()`
-    replays against the record's **stored** `cost_params`, not `policy.py`'s current
-    constants; `dashboard.html`/`docket.html` dropped the Google Fonts `@import` (offline is
-    now literally true) and label the single-model queue/audit snapshots in-page.
+    action_values / probabilities / cost params / degraded (not just the feature vector);
+    `verify_and_replay()` replays against the record's **stored** `cost_params`, not
+    `policy.py`'s current constants; `dashboard.html`/`docket.html` dropped the Google Fonts
+    `@import` (offline is now literally true) and label the single-model queue/audit
+    snapshots in-page.
 
 12. **The audit log is replayable but not cryptographically tamper-proof against an
     attacker with write access to the file.** It is plaintext JSONL with an **unkeyed**
@@ -491,17 +513,23 @@ versions.)
     append-only external storage. Out of scope for a solo buildathon build; stated so it
     isn't mistaken for production-grade integrity.
 
-13. **Causal correctness holds only for single-threaded, in-order processing.** The
-    `ClientHistoryStore` is a JSON file with no locking, no atomic replace, and no
-    event-time ordering — two concurrent workers can lose updates or double-decide, and a
-    late-arriving transaction can see history that (by wall-clock) came after it. The
-    class docstring already says a production deployment swaps it for a transactional
-    feature store with per-entity / event-time semantics; the demo does not.
+13. **Causal correctness is now safe for one multi-threaded process, but not across
+    processes / hosts, and there is still no event-time ordering.** Round 3 added an atomic
+    `save()` and an in-process lock (see item 11), so a single multi-threaded server can no
+    longer double-decide a `transaction_id` or lose a history update. What remains: two
+    separate processes / machines each have their own lock and their own in-memory store,
+    and a late-arriving (out-of-order) transaction can still see history that, by
+    event-time, came after it. Genuine multi-host transactionality needs the real
+    feature store the class docstring points to (Redis / a client-profile table with
+    per-entity, event-time semantics); the demo does not have one.
 
 14. **Reproducibility depends on a manual Kaggle export.** The trained artifacts are not in
     git (weights + real transaction rows don't belong in history), so the primary demo and
-    the `@requires_real_artifacts` tests need `artifacts/` populated from a Kaggle run —
-    disclosed in `artifacts/README.md`, but there is no versioned release asset with
-    checksums, and the notebook-vs-`src/` duplication (which produced the ddof bug in
-    item 11) would be better guarded by committed golden feature vectors. `tests/` that
-    don't need the artifacts (schema/fail-closed/parity/policy) do run on a bare clone.
+    the `@requires_real_artifacts` tests need `artifacts/` populated from a Kaggle run
+    (disclosed in `artifacts/README.md`). Round 3 added a per-artifact SHA-256 fingerprint
+    (`demo_engine.py` prints them; the loader hard-verifies them if a manifest ever records
+    `artifact_checksums`), so a swapped file is detectable — but there is still no published
+    release asset carrying those checksums, and the notebook-vs-`src/` duplication (which
+    produced the ddof bug in item 11) would be better guarded by committed golden feature
+    vectors. `tests/` that don't need the artifacts (schema/fail-closed/parity/policy) do
+    run on a bare clone.

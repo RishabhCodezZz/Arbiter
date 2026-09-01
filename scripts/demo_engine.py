@@ -74,6 +74,10 @@ def main():
     line("1. decide() from a saved artifact — CPU, no notebook, no training")
     engine = Engine(artifacts_dir=ARTIFACTS_DIR)
     all_ok &= check(engine.model is not None, "model artifact loaded")
+    if engine.model is not None:
+        print("  artifact SHA-256 (record these — they fingerprint the exact model in use):")
+        for name, digest in engine.model.artifact_sha256.items():
+            print(f"    {name:24} {digest}")
 
     first = samples[0]
     d = engine.decide(first)

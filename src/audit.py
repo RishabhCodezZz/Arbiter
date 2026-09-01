@@ -11,6 +11,7 @@ trail doesn't get edited.
 """
 import hashlib
 import json
+import math
 import os
 import time
 from dataclasses import dataclass, asdict
@@ -25,12 +26,14 @@ class AuditRecord:
     feature_vector: dict          # human-readable causal features, for the replay check
     feature_vector_hash: str      # recomputed and checked before replay (feature vector only)
     record_hash: str              # covers feature_vector + the DECISION fields (action,
-                                   # calibrated/raw probability, cost_params, model_version,
-                                   # transaction_id) so those can't be altered undetected
-                                   # the way hashing only the feature vector allowed. NOTE:
-                                   # still an UNKEYED sha256 — this catches casual/partial
-                                   # tampering, not an attacker who rewrites the hash too.
-                                   # See docs/eval_report.md exception list for the residual.
+                                   # action_values, calibrated/raw probability, cost_params,
+                                   # model_version, transaction_id, degraded) so none of
+                                   # them — including the allow/step-up/block rupee figures
+                                   # shown to a reviewer as the rationale — can be altered
+                                   # undetected the way hashing only the feature vector
+                                   # allowed. NOTE: still an UNKEYED sha256 — this catches
+                                   # casual/partial tampering, not an attacker who rewrites
+                                   # the hash too. See docs/eval_report.md exception list.
     raw_probability: Optional[dict]   # {"xgboost": ..., "lightgbm": ...} — each ensemble
                                        # member's own raw score, kept for audit transparency
                                        # (not just the blended result). None on the
@@ -57,12 +60,13 @@ def _hash_features(feature_vector: dict) -> str:
 
 
 def _hash_record(transaction_id, model_version, feature_vector, raw_prob, calibrated_prob,
-                 cost_params, action, degraded) -> str:
-    """Hash the fields a replay actually depends on — so altering the stored action,
-    probability, cost params or degraded flag (while leaving the feature vector alone) is
-    detectable, which hashing only the feature vector did not catch. Unkeyed sha256: raises
-    the bar, does not make the log cryptographically tamper-proof against someone who can
-    also recompute this hash."""
+                 cost_params, action, action_values, degraded) -> str:
+    """Hash the fields a replay actually depends on PLUS the per-action rupee values shown
+    to a reviewer — so altering the stored action, its allow/step-up/block value breakdown,
+    the probability, cost params or degraded flag (while leaving the feature vector alone)
+    is detectable, which hashing only the feature vector did not catch. Unkeyed sha256:
+    raises the bar, does not make the log cryptographically tamper-proof against someone who
+    can also recompute this hash."""
     payload = {
         "transaction_id": str(transaction_id),
         "model_version": model_version,
@@ -71,6 +75,7 @@ def _hash_record(transaction_id, model_version, feature_vector, raw_prob, calibr
         "calibrated_probability": calibrated_prob,
         "cost_params": cost_params,
         "action": action,
+        "action_values": action_values,
         "degraded": bool(degraded),
     }
     encoded = json.dumps(payload, sort_keys=True, default=str).encode()
@@ -121,7 +126,8 @@ class AuditLog:
             feature_vector=feature_vector,
             feature_vector_hash=_hash_features(feature_vector),
             record_hash=_hash_record(transaction_id, model_version, feature_vector,
-                                     raw_prob, calibrated_prob, cost_params, action, degraded),
+                                     raw_prob, calibrated_prob, cost_params, action,
+                                     action_values, degraded),
             raw_probability=raw_prob,
             calibrated_probability=calibrated_prob,
             cost_params=cost_params,
@@ -159,11 +165,13 @@ def verify_and_replay(record: dict, policy_module) -> tuple[bool, str]:
         recomputed = _hash_record(
             record["transaction_id"], record["model_version"], record["feature_vector"],
             record.get("raw_probability"), record.get("calibrated_probability"),
-            record.get("cost_params"), record["action"], record.get("degraded", False),
+            record.get("cost_params"), record["action"], record.get("action_values"),
+            record.get("degraded", False),
         )
         if recomputed != stored_record_hash:
             return False, ("TAMPER DETECTED: record hash does not match — a decision field "
-                           "(action / probability / cost params) was altered after the fact")
+                           "(action / action_values / probability / cost params) was altered "
+                           "after the fact")
 
     if record["calibrated_probability"] is None:
         # fallback-path record — nothing to replay against the cost model, but the
@@ -177,7 +185,7 @@ def verify_and_replay(record: dict, policy_module) -> tuple[bool, str]:
     # margin, an FX rate is corrected). Passing the same `degraded` flag matters too: a
     # decision made under a widened step-up band replayed against the normal boundaries
     # could produce a different action and be falsely flagged as tampered.
-    replayed_action, _ = policy_module.decide_action(
+    replayed_action, replayed_values = policy_module.decide_action(
         record["calibrated_probability"], amount_usd,
         degraded=record.get("degraded", False),
         cost_params=record.get("cost_params"),
@@ -185,4 +193,16 @@ def verify_and_replay(record: dict, policy_module) -> tuple[bool, str]:
     if replayed_action != record["action"]:
         return False, (f"REPLAY MISMATCH: stored action was '{record['action']}', "
                         f"replay produced '{replayed_action}'")
-    return True, f"replay OK: '{replayed_action}' reproduced exactly from stored inputs"
+
+    # Also re-derive the allow/step-up/block rupee breakdown and confirm it matches what was
+    # stored — the record hash already covers action_values, this is the independent second
+    # check (same belt-and-braces pattern as action itself).
+    stored_values = record.get("action_values")
+    if stored_values:
+        for k, replayed_v in replayed_values.items():
+            stored_v = stored_values.get(k)
+            if stored_v is None or not math.isclose(float(stored_v), float(replayed_v), rel_tol=1e-9, abs_tol=1e-6):
+                return False, (f"REPLAY MISMATCH: stored action_values['{k}'] was {stored_v}, "
+                                f"replay produced {replayed_v}")
+
+    return True, f"replay OK: '{replayed_action}' + its value breakdown reproduced exactly from stored inputs"

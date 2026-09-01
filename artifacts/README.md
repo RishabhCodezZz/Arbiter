@@ -4,8 +4,9 @@ Not committed to the repo (model weights + real transaction samples don't belong
 history). Populated by running the addenda in `notebooks/06_cost_model_refined.py` in your
 Kaggle session, then downloading these files from Kaggle's Output panel:
 
-**The shipped model is a 2-model ensemble** (XGBoost + LightGBM, both trained untuned on the
-same feature set, simple-averaged after independent Platt calibration) — a confirmed,
+**The shipped model is a 2-model ensemble** on the same feature set, simple-averaged after
+independent Platt calibration: the XGBoost member is notebook 03's V4 Optuna-tuned model, the
+LightGBM member is deliberately left untuned (tuning it was tried and made it worse — see below) — a confirmed,
 statistically real rupee-value improvement over the single-XGBoost baseline (95% CI
 [+₹6.55L, +₹21.24L] on the test month; see `docs/experiments.md`'s ensemble sections for the
 full evidence trail, including a 3rd model (CatBoost) and further per-model tuning, both

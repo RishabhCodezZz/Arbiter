@@ -17,6 +17,7 @@ Get any of these orderings wrong and CLAUDE.md's "causal, replayable, idempotent
 never decides" claims become false in the one place that actually matters.
 """
 import math
+import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -64,6 +65,28 @@ class Engine:
             self.model = None
             self.manifest = None
         self._explainer = None  # built lazily — see _get_explainer()
+        # Serialises the idempotency check-and-commit and the history-store write for
+        # concurrent callers WITHIN ONE PROCESS (a multi-threaded server). The scoring work
+        # itself runs unlocked — a slow LLM call can't block another transaction's commit.
+        # Cross-process / multi-host safety and event-time ordering for late-arriving events
+        # are NOT covered here: that needs a real transactional feature store — stated
+        # plainly in docs/eval_report.md exception item 13.
+        self._decide_lock = threading.RLock()
+
+    def _replay_decision(self, existing: dict, txn_id: str) -> "Decision":
+        """Build the Decision returned for an idempotent hit — a transaction_id already in
+        the audit log returns its ORIGINAL decision, never a re-scored one."""
+        return Decision(
+            transaction_id=txn_id,
+            action=existing["action"],
+            calibrated_probability=existing["calibrated_probability"],
+            latency_ms=0.0,
+            fallbacks_triggered=existing["fallbacks_triggered"],
+            idempotent_replay=True,
+            explanation=f"idempotent replay of a decision already made for {txn_id}",
+            narrative=existing.get("narrative"),
+            used_llm=existing.get("used_llm", False),
+        )
 
     def _get_explainer(self) -> Explainer:
         """SHAP TreeExplainer construction has a real one-time cost, now for both ensemble
@@ -89,21 +112,14 @@ class Engine:
                 )
         txn_id = str(transaction["TransactionID"])
 
-        # --- idempotency: check BEFORE any scoring work. A duplicate/replayed transaction
-        # returns the ORIGINAL decision, not a freshly (possibly differently) computed one.
-        existing = self.audit.lookup(txn_id)
+        # --- idempotency: check (under the lock) BEFORE any scoring work. A duplicate/
+        # replayed transaction returns the ORIGINAL decision, not a freshly (possibly
+        # differently) computed one. Re-checked again at commit time below, in case another
+        # caller finished this same transaction_id while this one was scoring.
+        with self._decide_lock:
+            existing = self.audit.lookup(txn_id)
         if existing is not None:
-            return Decision(
-                transaction_id=txn_id,
-                action=existing["action"],
-                calibrated_probability=existing["calibrated_probability"],
-                latency_ms=0.0,
-                fallbacks_triggered=existing["fallbacks_triggered"],
-                idempotent_replay=True,
-                explanation=f"idempotent replay of a decision already made for {txn_id}",
-                narrative=existing.get("narrative"),
-                used_llm=existing.get("used_llm", False),
-            )
+            return self._replay_decision(existing, txn_id)
 
         t0 = time.monotonic()
         fallbacks = []
@@ -178,16 +194,25 @@ class Engine:
             degraded=degraded, shap_contributions=shap_contributions,
             narrative=narrative_text, used_llm=used_llm,
         )
-        self.audit.append(record)
+        # --- commit under the lock, with a re-check: another caller may have finished this
+        # same transaction_id while this one was scoring (unlocked). If so, discard the
+        # freshly computed record — do NOT append a duplicate or double-count the client's
+        # history — and return their decision. Keeps decide() idempotent across threads.
+        with self._decide_lock:
+            existing = self.audit.lookup(txn_id)
+            if existing is not None:
+                return self._replay_decision(existing, txn_id)
 
-        # --- update history store AFTER the decision, never before: this transaction
-        # must not be able to see its own effect on its own score. ---
-        if fv.get("_uid") is not None:
-            self.store.update(
-                uid=fv["_uid"], coarse_uid=fv["_coarse_uid"], amount=fv["_amount"] or 0.0,
-                txn_dt=fv["_dt"], device=fv.get("_device"), email=fv.get("_email"),
-                d15n=fv.get("_d15n"),
-            )
+            self.audit.append(record)
+
+            # --- update history store AFTER the decision, never before: this transaction
+            # must not be able to see its own effect on its own score. ---
+            if fv.get("_uid") is not None:
+                self.store.update(
+                    uid=fv["_uid"], coarse_uid=fv["_coarse_uid"], amount=fv["_amount"] or 0.0,
+                    txn_dt=fv["_dt"], device=fv.get("_device"), email=fv.get("_email"),
+                    d15n=fv.get("_d15n"),
+                )
 
         explanation = (f"p={calibrated_prob:.4f} -> {action}" if calibrated_prob is not None
                         else f"model unavailable -> fail-closed default: {action}")

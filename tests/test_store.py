@@ -9,12 +9,14 @@ divided by n (population / ddof=0) while the notebooks build uid_ambiguity_std_p
 consumes. These tests pin both std features to their notebook definitions so it can't
 silently drift again.
 """
+import json
 import math
+import os
 
 import pandas as pd
 import pytest
 
-from src.store import ClientStats, CoarseStats
+from src.store import ClientHistoryStore, ClientStats, CoarseStats
 
 
 def _coarse_after(values):
@@ -83,3 +85,27 @@ def test_fine_std_matches_notebook_population_formula_ddof0(amounts):
 
 def test_fine_std_is_none_with_no_history():
     assert _fine_after([]).std() is None
+
+
+# --- atomic save: no truncated file, no leftover temp -------------------------------
+
+def test_save_is_atomic_and_leaves_no_temp_file(tmp_path):
+    """save() writes via a temp file + os.replace so a crash or a second writer can't
+    leave a truncated, unparseable history file (the 'lose history' half of the disclosed
+    concurrency gap). After a normal update the real path is valid JSON and the tmp is gone."""
+    path = tmp_path / "client_history.json"
+    store = ClientHistoryStore(str(path))
+    store.update(uid="c1", coarse_uid="b1", amount=100.0, txn_dt=1000,
+                 device="d", email="e", d15n=5.0)
+    store.update(uid="c1", coarse_uid="b1", amount=200.0, txn_dt=2000,
+                 device="d", email="e", d15n=7.0)
+
+    assert path.exists()
+    data = json.loads(path.read_text())          # parses cleanly = not truncated
+    assert data["fine"]["c1"]["n"] == 2
+    leftovers = [p for p in os.listdir(tmp_path) if ".tmp" in p]
+    assert not leftovers, f"atomic save left a temp file behind: {leftovers}"
+
+    # a fresh store reloads the same state
+    reloaded = ClientHistoryStore(str(path))
+    assert reloaded.get_fine("c1").n == 2

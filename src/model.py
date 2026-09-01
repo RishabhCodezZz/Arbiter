@@ -4,8 +4,10 @@ engine-build addendum. CPU only — no GPU device is ever requested here, on pur
 what proves the notebooks and this module are genuinely separable, per CLAUDE.md sec 7
 ("the cloned repo must run without a GPU").
 
-Ships as a 2-model ensemble (XGBoost + LightGBM), both trained untuned on the exact same
-feature set, simple-averaged after independent Platt calibration — confirmed as a real,
+Ships as a 2-model ensemble on the exact same feature set, simple-averaged after
+independent Platt calibration: the XGBoost member is the V4 model from notebook 03's
+60-trial Optuna search; the LightGBM member is deliberately left UNTUNED (a real tuning
+pass was tried and made it worse on test — see docs/experiments.md). Confirmed as a real,
 statistically significant rupee-value improvement over the single-XGBoost baseline (95% CI
 [+Rs6.55L, +Rs21.24L] on the test month; see docs/experiments.md's ensemble sections for the
 full evidence trail, including why a 3rd model (CatBoost) and further tuning were both
@@ -16,6 +18,7 @@ sklearn object, for both models — see notebook 06's engine-build addendum comm
 no sklearn-version fragility, and the calibration step stays auditable by anyone reading
 this file.
 """
+import hashlib
 import json
 import math
 import os
@@ -23,6 +26,14 @@ import os
 import lightgbm as lgb
 import pandas as pd
 import xgboost as xgb
+
+
+def _sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 class ModelUnavailableError(Exception):
@@ -155,6 +166,28 @@ class FraudModel:
         self._xgb = self._load_xgb(artifacts_dir, allow_version_mismatch)
         self._lgb = self._load_lgb(artifacts_dir, allow_version_mismatch)
 
+        # SHA-256 of every artifact this engine loaded — a lightweight, reproducible
+        # fingerprint of the exact model in use. scripts/demo_engine.py prints these so a
+        # user reproducing the build can record them and compare across machines/time.
+        self.artifact_sha256 = {
+            name: _sha256_file(os.path.join(artifacts_dir, name))
+            for name in ("model.json", "calibrator.json", "model_lgb.txt",
+                         "calibrator_lgb.json", "feature_manifest.json")
+        }
+        # Optional hard integrity check: if the manifest records expected checksums, a
+        # swapped or truncated artifact fails closed here — same principle as the version
+        # guard. The Kaggle export doesn't populate `artifact_checksums` yet; adding it
+        # there is the versioned-release follow-up (docs/eval_report.md exception item 14).
+        expected = self.manifest.get("artifact_checksums")
+        if isinstance(expected, dict) and not allow_version_mismatch:
+            for name, want in expected.items():
+                got = self.artifact_sha256.get(name)
+                if got != want:
+                    raise ModelUnavailableError(
+                        f"artifact '{name}' sha256 {got} does not match the manifest-recorded "
+                        f"{want} — refusing to score on possibly-wrong weights"
+                    )
+
     def _load_xgb(self, artifacts_dir: str, allow_version_mismatch: bool) -> _CalibratedSubModel:
         model_path = os.path.join(artifacts_dir, "model.json")
         calib_path = os.path.join(artifacts_dir, "calibrator.json")
@@ -168,15 +201,23 @@ class FraudModel:
             raise ModelUnavailableError(f"xgboost artifact failed to load: {e}") from e
         coef, intercept = _load_calibrator(calib_path, "xgboost")
 
+        # Fail closed on BOTH a mismatch AND a missing xgboost_version. A malformed manifest
+        # that simply omits the field must not silently disable the guard — that would be a
+        # quiet way back into exactly the 23x silent-wrong-probability bug this exists to
+        # stop. allow_version_mismatch=True is the deliberate escape hatch for either case.
         trained_version = self.manifest.get("xgboost_version")
         running_version = xgb.__version__
-        if trained_version is not None and trained_version != running_version and not allow_version_mismatch:
+        if not allow_version_mismatch and (trained_version is None or trained_version != running_version):
+            detail = ("the manifest does not record an 'xgboost_version' — cannot confirm "
+                      "the running xgboost matches the one the model was trained with"
+                      if trained_version is None else
+                      f"trained with xgboost=={trained_version}, but xgboost=={running_version} "
+                      f"is running locally (this specific gap was measured to produce a 23x "
+                      f"different probability on identical input)")
             raise XGBoostVersionMismatchError(
-                f"XGBoost component was trained with xgboost=={trained_version}, but "
-                f"xgboost=={running_version} is running locally. Verified empirically that "
-                f"this specific gap produces a 23x different probability on identical "
-                f"input — refusing to score rather than serve a silently wrong number. "
-                f"Fix: pip install xgboost=={trained_version} (see requirements.txt)."
+                f"XGBoost component: {detail} — refusing to score rather than serve a "
+                f"silently wrong number. Fix: pin the training version in requirements.txt, "
+                f"or pass allow_version_mismatch=True to override deliberately."
             )
 
         self.xgb_booster = booster  # exposed for src/explain.py's SHAP TreeExplainer
@@ -198,15 +239,20 @@ class FraudModel:
             raise ModelUnavailableError(f"lightgbm artifact failed to load: {e}") from e
         coef, intercept = _load_calibrator(calib_path, "lightgbm")
 
+        # Same as the XGBoost guard: fail closed on a mismatch OR a missing lightgbm_version,
+        # unless allow_version_mismatch=True.
         trained_version = self.manifest.get("lightgbm_version")
         running_version = lgb.__version__
-        if trained_version is not None and trained_version != running_version and not allow_version_mismatch:
+        if not allow_version_mismatch and (trained_version is None or trained_version != running_version):
+            detail = ("the manifest does not record a 'lightgbm_version'"
+                      if trained_version is None else
+                      f"trained with lightgbm=={trained_version}, but lightgbm=={running_version} "
+                      f"is running locally")
             raise LightGBMVersionMismatchError(
-                f"LightGBM component was trained with lightgbm=={trained_version}, but "
-                f"lightgbm=={running_version} is running locally — refusing to score on an "
-                f"unverified cross-version assumption, same fail-closed principle as the "
-                f"XGBoost guard. Fix: pip install lightgbm=={trained_version} (see "
-                f"requirements.txt)."
+                f"LightGBM component: {detail} — refusing to score on an unverified "
+                f"cross-version assumption, same fail-closed principle as the XGBoost guard. "
+                f"Fix: pin the training version in requirements.txt, or pass "
+                f"allow_version_mismatch=True to override deliberately."
             )
 
         self.lgb_booster = booster  # exposed for src/explain.py's SHAP TreeExplainer

@@ -2,6 +2,7 @@
 The core engine proof — same properties scripts/demo_engine.py demonstrates as one linear
 narrative, here as independent, named tests. Run against the real trained model.
 """
+import json
 import shutil
 
 import pytest
@@ -51,6 +52,48 @@ def test_idempotency_same_transaction_id_twice(engine, real_transactions):
     assert second.idempotent_replay is True
     assert second.action == first.action
     assert second.calibrated_probability == first.calibrated_probability
+
+
+@requires_real_artifacts
+def test_concurrent_decides_same_id_produce_one_record(engine, real_transactions):
+    """Idempotency must hold across threads in one process, not just sequential calls:
+    N threads racing decide() on the SAME transaction_id must write exactly ONE audit
+    record and update the client's history exactly once (not N times). The in-process
+    lock + commit-time re-check in engine.decide() is what guarantees this."""
+    import threading
+
+    txn = real_transactions[0]
+    txn_id = str(txn["TransactionID"])
+    results, errors = [], []
+
+    def worker():
+        try:
+            results.append(engine.decide(dict(txn)))
+        except Exception as e:  # pragma: no cover - a thread error fails the assert below
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"a worker thread raised: {errors}"
+    # exactly one record for this id
+    with open(engine.audit.path) as f:
+        matching = [ln for ln in f if ln.strip() and json.loads(ln)["transaction_id"] == txn_id]
+    assert len(matching) == 1, f"expected 1 audit record for {txn_id}, got {len(matching)}"
+    # every thread agrees on the action; all but the winner are flagged as replays
+    actions = {r.action for r in results}
+    assert len(actions) == 1, f"threads disagreed on the action: {actions}"
+    assert sum(1 for r in results if not r.idempotent_replay) <= 1, (
+        "at most one thread should have produced a fresh (non-replay) decision"
+    )
+    # the client's history counted this transaction exactly once
+    rec = json.loads(matching[0])
+    uid = rec["feature_vector"].get("_uid")
+    if uid is not None:
+        assert engine.store.get_fine(uid).n == 1, "history double-counted a concurrent decide()"
 
 
 @requires_real_artifacts

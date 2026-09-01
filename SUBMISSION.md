@@ -118,13 +118,18 @@ actually reported: XGBoost beats a real, capably-chosen LLM by **3.65x** on accu
 roughly six orders of magnitude on latency for this task — measured evidence for exactly
 the "where you chose not to use AI" question the rubric asks.
 
-**The tally.** 20 real defects across the project — 17 found by our own testing (running
-things and trying to break them, never by reading code and calling it correct), plus 3
-more from two rounds of automated AI code review run over the repo after the migration: a
-train/serve `std` mismatch on one feature (ddof=0 online vs ddof=1 in training — `[0,2]` →
-`1.0` vs `1.4142`), a malformed-but-valid artifact that crashed engine construction instead
-of failing closed, and a NaN/Infinity calibrator coefficient that `float(...)` accepted and
-that would have produced a silent `allow`. All fixed, with regression tests; the same
-review's production-grade findings (keyed audit signatures, a concurrency-safe feature
-store) are in the honest exception list, disclosed rather than hidden. Every defect logged
-as it surfaced, every one fixed, none shipped.
+**The tally.** 23 real defects across the project — 17 found by our own testing (running
+things and trying to break them, never by reading code and calling it correct), plus 6
+more from three rounds of automated AI code review run over the repo after the migration.
+The clearest of the review defects: a train/serve `std` mismatch on one feature (ddof=0
+online vs ddof=1 in training — `[0,2]` → `1.0` vs `1.4142`); a malformed-but-valid artifact
+that crashed engine construction instead of failing closed; a NaN/Infinity calibrator
+coefficient that `float(...)` accepted and that would have produced a silent `allow`; a
+version guard that a manifest simply *omitting* the version field could silently bypass
+(the same 23x wrong-probability hole, re-opened); and the allow/step-up/block rupee
+breakdown shown as a decision's rationale not being covered by the tamper hash. All fixed,
+with regression tests. The review's genuinely production-grade findings — cryptographically
+keyed audit signatures, a multi-host transactional feature store, a published release
+manifest — stay in the honest exception list; two of them (single-process concurrency,
+per-artifact checksums) were partly hardened rather than only disclosed. Every defect
+logged as it surfaced, every one fixed, none shipped.

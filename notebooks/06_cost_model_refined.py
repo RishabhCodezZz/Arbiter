@@ -862,7 +862,7 @@ print("Saved: ensemble_diagnostic.json")
 # %% [markdown]
 # ## LightGBM artifact export — for the 2-model ensemble the engine now ships
 #
-# WHY: the 2-model ensemble (this XGBoost + this LightGBM, both untuned, simple-averaged)
+# WHY: the 2-model ensemble (this Optuna-tuned XGBoost + this untuned LightGBM, simple-averaged)
 # is a confirmed, statistically real rupee-value improvement over the single-XGBoost
 # baseline — see `docs/experiments.md`'s ensemble sections. Exports the SAME `lgb_model`
 # already fit and validated just above — no retraining, reuses what's already in memory.

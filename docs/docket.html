@@ -216,7 +216,7 @@
       <div class="ledger-cell"><div class="v">0.5597</div><div class="l">PR-AUC, 16.1× random</div></div>
       <div class="ledger-cell"><div class="v">100.16%</div><div class="l">Value, hard-verified</div></div>
       <div class="ledger-cell"><div class="v">3.65×</div><div class="l">Beats a real LLM at this job</div></div>
-      <div class="ledger-cell"><div class="v">20</div><div class="l">Bugs caught before shipping</div></div>
+      <div class="ledger-cell"><div class="v">23</div><div class="l">Bugs caught before shipping</div></div>
     </div>
   </section>
 
@@ -319,8 +319,8 @@
         </div>
       </div>
       <div class="dentry">
-        <div class="dhead"><span class="dtag">REVIEW</span><h3>Ran it through automated code review. Twice.</h3><span class="verdict-chip good">3 real defects</span></div>
-        <p>With the build already called done, a separate AI code-review agent was run over the whole repository — then run again after the first round of fixes. Both rounds turned up something real, including one defect <em>inside the first round's own fix</em>. Three genuine bugs, all fixed with regression tests; three production-grade gaps deliberately left open and written into the exception list instead of quietly omitted. Detailed in Exhibit 07.</p>
+        <div class="dhead"><span class="dtag">REVIEW</span><h3>Ran it through automated code review. Three times.</h3><span class="verdict-chip good">6 real defects</span></div>
+        <p>With the build already called done, a separate AI code-review agent was run over the whole repository — then run again after each round of fixes, three passes in all. Every pass turned up something real, including one defect <em>inside the first round's own fix</em>, and another (a version guard a manifest could silently skip) that re-opened the project's worst bug. Six genuine defects, all fixed with regression tests; three production-grade gaps written into the exception list rather than quietly omitted — two of them partly hardened. Detailed in Exhibit 07.</p>
       </div>
     </div>
   </section>
@@ -393,17 +393,17 @@
     <div class="fail-row"><div class="what">DUPLICATE / REPLAYED TRANSACTION ID</div><div class="resp">Returns the original verdict, unchanged. Verified: same ID submitted twice, byte-identical result.</div></div>
     <div class="fail-row"><div class="what">A STORED RECORD IS TAMPERED WITH</div><div class="resp">Re-derives the verdict from its own stored inputs and flags the mismatch — the record is provably honest, not just claimed to be.</div></div>
 
-    <p style="margin-top:28px;"><strong>20 real bugs</strong> caught this way across the build, every one logged as it was found, none of them shipped. The three that mattered most are in the next exhibit.</p>
+    <p style="margin-top:28px;"><strong>23 real bugs</strong> caught this way across the build, every one logged as it was found, none of them shipped. The three that mattered most are in the next exhibit.</p>
   </section>
 
   <!-- ============ EXHIBIT 07 — THE BUGS THAT MATTERED ============ -->
   <section class="rv">
     <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;07</span><h2>The bugs that mattered</h2><div class="rule"></div></div>
-    <p>Twenty real defects across this build; none shipped. Three are worth the page — each one was <em>silent</em>, each would have made a number in this docket false, and each was caught by running something rather than reading it and deciding it looked correct.</p>
+    <p>Twenty-three real defects across this build; none shipped. Three are worth the page — each one was <em>silent</em>, each would have made a number in this docket false, and each was caught by running something rather than reading it and deciding it looked correct.</p>
 
     <div class="outcome-row">
       <div class="outcome-cell"><div class="t">Found by own testing</div><div class="v">17</div></div>
-      <div class="outcome-cell"><div class="t">Found by AI code review</div><div class="v">3</div></div>
+      <div class="outcome-cell"><div class="t">Found by AI code review</div><div class="v">6</div></div>
       <div class="outcome-cell"><div class="t">Shipped</div><div class="v" style="color:var(--good)">0</div></div>
     </div>
 

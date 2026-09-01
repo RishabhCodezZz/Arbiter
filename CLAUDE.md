@@ -138,7 +138,7 @@ The 1st place approach post-processed by *"taking all predictions from a single 
 | Calibration | none needed | Platt scaling + reliability diagram (isotonic tested, rejected — see §5) | AUC is rank-only; rupees need real probabilities |
 | Objective | maximise AUC | minimise expected rupee loss | no merchant has an AUC line in their P&L |
 | Output | a score | allow / step-up / block | a score is not a decision |
-| Model | CAT+LGB+XGB stack + NN | 2-model ensemble (XGBoost + LightGBM, both untuned, simple-averaged) | still simpler than a 4-way stack — CatBoost and further tuning were both tried and empirically rejected (see below); a stacking meta-learner and a 4th neural-net member were never attempted |
+| Model | CAT+LGB+XGB stack + NN | 2-model ensemble (Optuna-tuned XGBoost + untuned LightGBM, simple-averaged) | still simpler than a 4-way stack — CatBoost and further tuning were both tried and empirically rejected (see below); a stacking meta-learner and a 4th neural-net member were never attempted |
 | Explainability | not required | SHAP → narrative | competitions don't need it, products do |
 | Extra metric | — | time-to-detection | nobody reports this |
 
@@ -287,7 +287,7 @@ notebooks/       →  the research record, cleaned, committed
 
 Use `device="cuda"` + `tree_method="hist"` (not the deprecated `gpu_hist`).
 
-**Built exactly as diagrammed** — `src/{store,features,model,policy,audit,engine}.py`, CPU-only. Verified four times, each round surfacing something real: a synthetic smoke test before the real artifact existed (2 bugs), the real trained model (mechanics: 13/13), a proper `requirements.txt`-pinned venv (2 severe bugs — a 23x XGBoost-version probability gap, and a corrupted-categorical export underneath it), then a clean re-export closing both: **13/13 on genuinely correct data**, plus the version guard itself independently tested. (Engine later rebuilt for the 2-model ensemble — now `ALL CHECKS PASSED` / 98 pytest, both version guards tested; see §13.) Fully proven, nothing outstanding.
+**Built exactly as diagrammed** — `src/{store,features,model,policy,audit,engine}.py`, CPU-only. Verified four times, each round surfacing something real: a synthetic smoke test before the real artifact existed (2 bugs), the real trained model (mechanics: 13/13), a proper `requirements.txt`-pinned venv (2 severe bugs — a 23x XGBoost-version probability gap, and a corrupted-categorical export underneath it), then a clean re-export closing both: **13/13 on genuinely correct data**, plus the version guard itself independently tested. (Engine later rebuilt for the 2-model ensemble — now `ALL CHECKS PASSED` / 105 pytest, both version guards tested; see §13.) Fully proven, nothing outstanding.
 
 ---
 
@@ -444,11 +444,13 @@ dev decomposition attributed the val→test gap to temporal mismatch, not overfi
 follow-up experiments then tested whether the shipped model could be beaten — five negative
 (harder regularization, per-segment calibration, LightGBM tuning, weak-model diversity, 3-vs-
 2-model rupee value), one positive: averaging in an untuned LightGBM, which shipped as the
-2-model ensemble after confirming the gain survives the real rupee policy. Finally, two
-rounds of automated AI code review over the repo found three real defects (a train/serve
+2-model ensemble after confirming the gain survives the real rupee policy. Finally, three
+rounds of automated AI code review over the repo found six real defects (a train/serve
 `ddof` skew, a malformed-artifact crash path, a NaN calibrator that could produce a silent
-`allow`), all fixed with regression tests, plus three production-grade gaps disclosed in
-the exception list rather than closed. Every number above is in `docs/experiments.md`; every failure and
+`allow`, a version guard a version-field-less manifest could silently bypass, an unhashed
+`action_values` rationale, and a "both untuned" doc contradiction), all fixed with
+regression tests, plus three production-grade gaps disclosed in the exception list —
+two of them (concurrency, artifact checksums) partly hardened in round 3. Every number above is in `docs/experiments.md`; every failure and
 fix, written as it happened, is in `journal/`.
 
 ---

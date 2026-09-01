@@ -15,6 +15,7 @@ called after — never the other way round, or a transaction would see itself.
 import json
 import math
 import os
+import time
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 
@@ -96,8 +97,31 @@ class ClientHistoryStore:
             "coarse": {cuid: asdict(s) for cuid, s in self._coarse.items()},
         }
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
-        with open(self.path, "w") as f:
-            json.dump(raw, f)
+        # Atomic write: a crash or a second writer mid-`json.dump` used to leave a
+        # truncated, unparseable history file (the "lose history" half of the disclosed
+        # concurrency gap — see docs/eval_report.md exception item 13). Write a sibling temp
+        # file, then os.replace() it over the real path — atomic on POSIX and Windows, so
+        # the real path is only ever a complete JSON document. The retry is for Windows
+        # specifically: a sync client / AV scanner can hold a transient handle on either
+        # file and make os.replace() raise PermissionError for a few milliseconds.
+        tmp = f"{self.path}.{os.getpid()}.tmp"
+        last_err = None
+        for attempt in range(20):
+            try:
+                with open(tmp, "w") as f:
+                    json.dump(raw, f)
+                os.replace(tmp, self.path)
+                return
+            except PermissionError as e:
+                last_err = e
+                time.sleep(0.05)
+            finally:
+                if os.path.exists(tmp):
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
+        raise last_err
 
     def get_fine(self, uid: str) -> ClientStats:
         return self._fine.get(uid, ClientStats())
