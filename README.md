@@ -24,7 +24,7 @@ Full story, in order, including everything that broke: [`journal/`](journal/buil
 Requires the six trained-model artifacts (not committed to git — see [`artifacts/README.md`](artifacts/README.md) for how to generate and download them from the companion Kaggle notebooks). The shipped model is a 2-model ensemble (XGBoost + LightGBM), so both models' files are required — the engine fails closed if either is missing.
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/RishabhCodezZz/arbiter.git
 cd arbiter
 python -m venv .venv
 
@@ -48,10 +48,11 @@ behavior, both ensemble members' raw scores in the audit record, and a live deci
 real held-out transaction, all running on plain CPU, no GPU, no training.
 
 **Dashboard:** open [`dashboard.html`](dashboard.html) directly in any browser — double-click
-it, or `file://` the path. One self-contained file: PR/cost curves with a live threshold
-slider, review queue, audit log, and sensitivity map, all populated with real data captured
-from this project's own test runs. No server, no install, no Python — just a file in this
-repo. (An earlier version ran locally via Streamlit; retired in favor of this.)
+it, or `file://` the path. One self-contained file, no server, no install, no Python. The
+headline tiles, PR/cost curves (with a live threshold slider) and sensitivity map are the
+shipped 2-model ensemble's real test-month data; the Review Queue and Audit Log tabs are
+labelled in-page as single-model-era snapshots (see [`docs/eval_report.md`](docs/eval_report.md)
+exception item 10).
 
 ---
 
@@ -72,7 +73,7 @@ and worked numbers: [CLAUDE.md §6](CLAUDE.md#6-architecture).
 ## Approach
 
 1. **Data**: [IEEE-CIS Fraud Detection](https://www.kaggle.com/c/ieee-fraud-detection) (Kaggle) — 590k real transactions, ~3.5% fraud, real semantic features (card, email, device). Chosen over anonymized alternatives specifically so SHAP explanations are true statements about the world, not noise. Split **temporally** (train ≤ day 120, validate 121–150, test > 150) — never randomly, so nothing is ever scored using information that wouldn't exist yet in production.
-2. **Model**: XGBoost, tuned via a 60-trial Optuna search on PR-AUC (not ROC-AUC — the latter is flattered by the ~96.5% negative class), then calibrated with Platt scaling. Isotonic calibration was tried first and rejected — it silently collapsed 91,271 distinct scores to 323, costing real ranking accuracy for no net benefit. Full ladder, every step measured: [`docs/experiments.md`](docs/experiments.md).
+2. **Model**: the shipped engine is a **2-model ensemble** — XGBoost (tuned via a 60-trial Optuna search on PR-AUC, not ROC-AUC, which is flattered by the ~96.5% negative class) plus an untuned LightGBM, each independently Platt-calibrated and then simple-averaged. A 3rd model (CatBoost) and further per-model tuning were both tried and measured to not help. Isotonic calibration was tried first and rejected — it silently collapsed 91,271 distinct scores to 323, costing real ranking accuracy for no net benefit. Full ladder, every step measured: [`docs/experiments.md`](docs/experiments.md).
 3. **Decision**: the calibrated probability feeds a cost model (chargeback fee, processing fee, merchant margin, step-up friction cost — all sourced from Razorpay's own disclosed pricing or cited industry studies, never invented) that computes the expected ₹ value of allow/step-up/block for every transaction and picks the best one.
 4. **Explanation**: SHAP contributions for flagged transactions only, turned into a one-sentence narrative by an LLM — which never decides, only describes. Delete the LLM entirely and every decision stays byte-identical; only the prose degrades to a deterministic template. Proven, not just claimed — see [Fallback design](#fallback-design-proven-not-claimed) below.
 5. **Serving**: a plain-CPU Python package (`src/`) that loads the trained artifact and scores transactions with no GPU, no retraining, no internet dependency — see [Architecture](#architecture).
@@ -93,10 +94,12 @@ margin × chargeback-fee assumptions): [`docs/eval_report.md`](docs/eval_report.
 ### The two differentiators
 
 **Would an LLM just do this job directly?** Benchmarked head-to-head against XGBoost on
-the same 200 held-out transactions: XGBoost PR-AUC 0.5735 vs `gpt-oss:20b` PR-AUC 0.1571
-— a real, capable model given a genuinely fair shot (not a strawman), still losing by
-3.65x on accuracy and ~6 orders of magnitude on latency (microseconds vs a 6.7s median).
-This is the evidence behind "where we chose not to use AI."
+the same 200 held-out transactions (a comparison sample sized for a fair identical-data
+test — not the full test month, so 0.5735 here differs from the 0.5597 headline; see
+[`docs/eval_report.md`](docs/eval_report.md) §7): XGBoost PR-AUC 0.5735 vs `gpt-oss:20b`
+PR-AUC 0.1571 — a real, capable model given a genuinely fair shot (not a strawman), still
+losing by 3.65x on accuracy and ~6 orders of magnitude on latency (microseconds vs a 6.7s
+median). This is the evidence behind "where we chose not to use AI."
 
 **What does refusing to cheat actually cost?** The original Kaggle-winning solution uses
 each client's *future* transactions to score a *past* one — legal on a static leaderboard,
@@ -134,7 +137,7 @@ notebook can't demonstrate graceful degradation, an audit trail, or "would you t
 
 | Failure | Behavior | Verified how |
 |---|---|---|
-| Model artifact missing/corrupt | Fail closed to a conservative rules baseline, never silently allow | `scripts/demo_engine.py` checks 11–13; `tests/test_engine.py` |
+| Model artifact missing/corrupt | Fail closed to a conservative rules baseline, never silently allow | `scripts/demo_engine.py` section 5 (fail-closed); `tests/test_engine.py`, `tests/test_model.py` |
 | LLM unavailable/times out/returns garbage | Decision unchanged; narrative falls back to a deterministic template | `tests/test_narrative.py` — timeout and garbage-response each their own named test, via dependency injection, no live network call |
 | Required feature missing | Impute, flag degraded, widen the step-up band (not just relabeled — a real bug where this mechanism was mathematically incapable of working was caught and fixed, see `journal/`) | `tests/test_policy.py::test_degraded_mode_widens_the_stepup_band` |
 | Duplicate/replayed transaction ID | Return the original decision, never re-decide | `scripts/demo_engine.py`, idempotency checks; `tests/test_engine.py` |
@@ -195,7 +198,8 @@ notebooks/    Kaggle research record — EDA, feature engineering, tuning, cost 
               the Kaggle-legal comparison model. Numbered, self-contained, run on Kaggle.
 src/          The product — CPU-only decision engine. store/features/model/policy/
               audit/explain/narrative/engine.
-scripts/      demo_engine.py (proves the engine), llm_benchmark.py (the LLM-vs-XGBoost evidence)
+scripts/      demo_engine.py (proves the engine), llm_benchmark.py (LLM-vs-XGBoost evidence),
+              robustness_checks.py (bootstrap CIs + exact false-positive cost)
 tests/        98 pytest tests — idempotency, replay/tamper detection, fail-closed paths (missing
               AND malformed artifacts), both version guards, batch-vs-online feature parity, cost-model boundaries, every LLM fallback mode
 artifacts/    Trained model + calibrator + sample data — not committed, see its README

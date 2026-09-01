@@ -3,18 +3,17 @@
 ## Where the work happens, and why it's split this way
 
 ```
-┌─────────────────────────────┐        ┌──────────────────────────────────┐
-│   Kaggle notebooks (GPU)     │        │      Local repo (CPU-only)        │
-│   research                   │  export │      product                      │
-│                               │  ────▶ │                                    │
-│  01  EDA + baseline           │ artifacts/  src/    the decision engine    │
-│  02  causal features + screen │  model.json         (this doc, below)     │
-│  03  V-col reduction, tuning, │  calibrator.json                          │
-│      calibration              │  feature_manifest    scripts/  demo +      │
-│  04  cost model + export      │  sample_txns          benchmarks           │
-│  05  Kaggle-legal comparison  │  llm_benchmark_*                          │
-│                               │  dashboard_data      (→ Control Room, ↓)   │
-└─────────────────────────────┘        └──────────────────────────────────┘
+Kaggle notebooks (GPU)                 Local repo (CPU-only)
+research                    ── export ▶  product
+
+  01  EDA + baseline                     artifacts/            src/       the decision engine
+  02  causal features + screening          model.json                     (this doc, below)
+  03  V-col reduction, tuning, calib.      calibrator.json
+  04  cost model + export (history)        model_lgb.txt        scripts/   demo + benchmarks
+  05  Kaggle-legal comparison             calibrator_lgb.json
+  06  refined cost model (current)         feature_manifest     dashboard.html  (below)
+                                          sample_txns
+                                          dashboard_data.json
 ```
 
 Research happens where the data and the GPU already are — Kaggle mounts the 1.35GB
@@ -75,7 +74,7 @@ Eight modules, each one job (`explain.py`/`narrative.py` share a row below since
 | `store.py` | Client history — the live analog of the notebook's expanding-window batch aggregates. Updated *after* a decision, never before. |
 | `features.py` | Raw transaction → the exact feature vector the model was trained on. Has a `build_degraded()` fallback for missing/malformed input. |
 | `model.py` | Loads both artifacts (XGBoost + LightGBM — the shipped model is a 2-model ensemble, simple-averaged after independent Platt calibration), no training. Records both training-time versions in the manifest and refuses to score on a mismatch for either one (`XGBoostVersionMismatchError` / `LightGBMVersionMismatchError`) — fails closed, same path as a missing model, rather than silently producing a wrong probability (see `journal/` for why this exists: a 23x probability discrepancy from a version mismatch, found by testing). |
-| `policy.py` | Identical cost formulas to `notebooks/04_cost_model.py` — computes the expected ₹ value of all three actions per transaction, picks the max. |
+| `policy.py` | Identical cost formulas to the Kaggle notebooks (`04_cost_model.py` / `06_cost_model_refined.py`) — computes the expected ₹ value of all three actions per transaction, picks the max. |
 | `audit.py` | Append-only log. Idempotency (`lookup()` before any scoring). Tamper detection (`verify_and_replay()` re-derives a decision from its own stored inputs and flags a mismatch). |
 | `explain.py` / `narrative.py` | SHAP contributions for flagged transactions only, turned into a sentence by an LLM that never decides — only ever called after the action is already locked in. |
 | `engine.py` | Orchestrates the above in the exact order shown, and is where every one of CLAUDE.md's invariants (causal, replayable, idempotent, "LLM never decides") is actually enforced — see its own module docstring for the four ordering rules it exists to guarantee. |
@@ -129,20 +128,17 @@ decisions, not assumed from reading the code.
 
 ## The dashboard — [`dashboard.html`](../dashboard.html)
 
-Originally a local Streamlit app (`dashboard.py`) with a deliberate data split: the
-PR curve, cost curve, and sensitivity map used a pre-computed export
-(`artifacts/dashboard_data.json`, since the full 92,427-row test month only ever exists
-inside a Kaggle session); the Review Queue and Audit Log ran `src/engine.py` **live**.
+A single self-contained HTML file: every dependency (CSS, JS, the real data arrays, even
+the reliability-diagram image) is inlined, with no external calls except Google Fonts, so
+it opens directly in a browser with no server, no build step, and nothing to install. This
+is deliberate — a judge should be able to see the dashboard without a Python environment.
+(An earlier iteration was a local Streamlit app; it was replaced once the zero-install
+version could carry the same data.)
 
-**Later retired** in favor of a single self-contained HTML file — same real data, but
-captured once rather than requiring a local Python install to view. Every dependency
-(CSS, JS, the real data arrays, even the reliability-diagram image) is inlined into one
-file with no external calls except Google Fonts, so it opens directly in a browser with no
-server, no build step, and nothing to install. The PR curve, cost curve (with a
-still-fully-interactive client-side threshold slider — real array lookups against the
-embedded data, no server needed), and sensitivity map are rendered natively from the same
-`dashboard_data.json` export. The Review Queue and Audit Log became honest **snapshots**:
-real transactions, real SHAP-derived narratives, real audit records, captured from an
-actual `src/engine.py` run and explicitly labeled as captured rather than live — a static
-page cannot run Python, and pretending otherwise would violate the same honesty standard
-as everything else here.
+The PR curve, cost curve (with a fully client-side threshold slider — real array lookups
+against the embedded data), and sensitivity map are rendered from `artifacts/dashboard_data.json`,
+the shipped ensemble's real full-test-month export. The Review Queue and Audit Log are
+honest **snapshots** — real transactions, real SHAP-derived narratives, real audit
+records, captured from an actual `src/engine.py` run and labelled in-page as captured
+rather than live (a static page cannot run Python, and those two panels are still from the
+single-model era — see `docs/eval_report.md` exception item 10).

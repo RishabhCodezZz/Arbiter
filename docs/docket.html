@@ -286,7 +286,7 @@
         </div>
       </div>
       <div class="dentry">
-        <div class="dhead"><span class="dtag">ENGINE</span><h3>Left Kaggle. Found the project's worst bug.</h3><span class="verdict-chip good">13 / 13</span></div>
+        <div class="dhead"><span class="dtag">ENGINE</span><h3>Left Kaggle. Found the project's worst bug.</h3><span class="verdict-chip good">runs standalone</span></div>
         <p>Built the real, standalone engine — CPU only, no GPU, no notebook. Then, moving to a clean environment: the model library's local version differed from Kaggle's training version. Same input, two versions, one said 17% fraud probability, the other said 0.7% — <strong>a 23× difference, silently, no error at all.</strong> Fixed with a hard version pin, plus a runtime guard that refuses to score on any future mismatch — then deliberately broke the guard to confirm it actually fires.</p>
       </div>
       <div class="dentry">
@@ -302,8 +302,8 @@
         </div>
       </div>
       <div class="dentry">
-        <div class="dhead"><span class="dtag">DASHBOARD</span><h3>Built the control room. Broke it on purpose.</h3><span class="verdict-chip good">5 / 5 live</span></div>
-        <p>A real dashboard — not slides. A slider that moves real rupees as you drag it; a live queue that scores real held-out payments in the browser. Used it, rather than trusting it, and found two more real bugs that way: one legitimate decision displaying like a glitch, one view crashing from a missing dependency. Both fixed, both re-verified by using it again.</p>
+        <div class="dhead"><span class="dtag">DASHBOARD</span><h3>Built the control room. Broke it on purpose.</h3><span class="verdict-chip good">2 bugs, from using it</span></div>
+        <p>A real dashboard — not slides. One self-contained HTML file, no install: a threshold slider that moves real rupees as you drag it, driven entirely client-side against the shipped ensemble's real test-month data. The review queue and audit log are honest captured snapshots — a static page cannot run Python, and it says so on the page. Used it rather than trusting it, and found two more real bugs that way: one legitimate decision displaying like a glitch, one view crashing from a missing dependency. Both fixed, both re-verified by using it again.</p>
       </div>
       <div class="dentry">
         <div class="dhead"><span class="dtag">DOCS</span><h3>Wrote down what it still can't do</h3><span class="verdict-chip good">complete</span></div>

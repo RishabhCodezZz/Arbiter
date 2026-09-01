@@ -23,16 +23,19 @@ tried and NOT adopted). Both `model.json`+`model_lgb.txt` and both calibrators a
 - `sample_transactions.json` — 25 real held-out test-month transactions, for `scripts/demo_engine.py`
 - `llm_benchmark_sample.json` — 500 real held-out test-month transactions, for `scripts/llm_benchmark.py`
 - `llm_benchmark_kaggle_results.json` — LLM-side scores from Ollama running on Kaggle's GPU
-- `dashboard_data.json` — PR/ROC/cost curves + sensitivity grid from the full test month. Not
-  consumed at runtime by anything (the data is already baked into `dashboard.html`) — kept
-  as the source-of-truth export that page's numbers are traceable back to.
+- `dashboard_data.json` — PR/ROC/cost curves + sensitivity grid for the **shipped 2-model
+  ensemble**, full test month. Not consumed at runtime (the data is baked into
+  `dashboard.html`) — kept as the source-of-truth export that page's numbers trace back to.
 - `test_month_raw.json` — raw (probability, label, amount) for all 92,427 test-month rows,
-  row-level not aggregated. Only needed for local bootstrap-resampling / rules-baseline work
-  against the exact headline population; nothing else reads it. Self-checked at export time
-  (the notebook cell that writes it recomputes `arbiter_value` from the raw arrays alone and
-  asserts it matches the headline number before printing success).
-- `error_analysis_false_positives.json` — all 233 real, exact false-positive transactions
-  (raw features, calibrated probability, amount, top-5 SHAP contributions each) — for the
+  the **shipped ensemble's** calibrated probabilities, row-level not aggregated. Only needed
+  for local bootstrap-resampling / rules-baseline work (`scripts/robustness_checks.py`);
+  nothing else reads it. Self-checked at export time (the notebook cell that writes it
+  recomputes `arbiter_value` from the raw arrays alone and asserts it matches the headline
+  number before printing success).
+- `error_analysis_false_positives.json` — the 233 exact false-positive transactions from the
+  **single-XGBoost** error-analysis run (not re-run for the ensemble, which has 223 — see
+  `docs/eval_report.md` §8b): raw features, calibrated probability, amount, top-5 SHAP
+  contributions each, for the
   manual error-analysis pass (clue skill ch14).
 - `error_analysis_false_negatives_sample.json` — 100 real transactions (of 1,444) where
   fraud was allowed straight through with zero friction — same fields as above.
@@ -62,8 +65,8 @@ tried and NOT adopted). Both `model.json`+`model_lgb.txt` and both calibrators a
   shipped), checking whether the point-estimate improvement is statistically real or
   within the noise of a single test month. Also scores a leaner 2-model (XGBoost+LightGBM,
   dropping CatBoost) ensemble as a simplicity check. **Result: both confirmed real** (95%
-  CI excludes zero for both the 2- and 3-model ensembles) — the first "make it better"
-  experiment this session to actually clear the bar for shipping.
+  CI excludes zero for both the 2- and 3-model ensembles) — the first of the
+  ensemble experiments to actually clear the bar for shipping.
 - `lgb_tuning.json` — no longer produced by `06_cost_model_refined.py` (the search itself
   was removed once its result was fully captured — see below); the file that was
   downloaded from the one Kaggle run that produced it is still referenced from
@@ -84,14 +87,13 @@ tried and NOT adopted). Both `model.json`+`model_lgb.txt` and both calibrators a
   on PR-AUC/ROC-AUC, not the rupee value this project actually optimizes for. Also runs a
   direct paired bootstrap of 3-model vs. 2-model rupee value — the one comparison the
   PR-AUC-only analysis couldn't settle.
-- `ensemble_dashboard_headline.json` — readable summary of the two files below, since
-  parsing full curve arrays for a quick number check is annoying.
-- `dashboard_data.json` / `test_month_raw.json` — **as of the ensemble-rebuild addendum,
-  these are OVERWRITTEN with the shipped 2-model ensemble's real data** (PR/ROC/cost
-  curves, policy mix, sensitivity map, and full row-level calibrated probabilities), not
-  the single-model numbers they originally held. Closes exception-list item 10
-  (`docs/eval_report.md`) — `dashboard.html` and `scripts/robustness_checks.py`'s output
-  need to be regenerated from the new copies of these two files to actually reflect this.
+- `ensemble_dashboard_headline.json` — readable summary of `dashboard_data.json` /
+  `test_month_raw.json` (parsing full curve arrays for a quick number check is annoying).
+  The ensemble-rebuild addendum regenerates all three from the shipped 2-model ensemble's
+  real data; `dashboard.html`'s embedded numbers and `docs/robustness_results.json` have
+  already been rebuilt from them. The only piece exception-list item 10
+  (`docs/eval_report.md`) still tracks is the dashboard's Review-Queue / Audit-Log
+  snapshots, which need a fresh Kaggle export of a risk-inclusive full-feature sample.
 
 Once `model.json`, `calibrator.json`, `model_lgb.txt`, `calibrator_lgb.json`,
 `feature_manifest.json`, and `sample_transactions.json` are all here, run from the repo root:
@@ -101,6 +103,4 @@ python scripts/demo_engine.py
 ```
 
 The dashboard needs none of this downloaded locally — `../dashboard.html` is one
-self-contained file with real data already captured into it. Open it directly in a
-browser, nothing to install. (An earlier version ran locally via `streamlit run
-dashboard.py`; later retired in favor of this.)
+self-contained file with real data already captured into it. Open it directly in a browser.

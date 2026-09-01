@@ -483,7 +483,7 @@ noise relative to the bootstrap CI already reported on the rupee lift, so the ex
 the bar for another Kaggle round trip and a re-verification cascade at this point in the
 project.
 
-## Ensemble diagnostic — the first confirmed, statistically real improvement this session
+## Ensemble diagnostic — the first confirmed, statistically real improvement
 (`artifacts/ensemble_diagnostic.json`, `artifacts/ensemble_bootstrap.json`)
 
 WHY: the causal-vs-leaky comparison (component B) already showed honoring the no-future-data
@@ -531,7 +531,7 @@ version beats the 2-model version by a statistically distinguishable amount — 
 higher point estimate is a real signal, not yet a proven-significant edge over the simpler
 2-model alternative.
 
-**Status: this is the first "make it better" experiment this session to clear the bar for
+**Status: this is the first "make it better" experiment to clear the bar for
 a real ship conversation** — unlike the hyperparameter sweep (rejected, real regression) and
 segment calibration (rejected, net value loss). Best known configuration as of this result:
 the **untuned** 3-model ensemble (below explains why tuning LightGBM further made things
@@ -602,7 +602,7 @@ help further? All three left deliberately untuned, same lesson as above.
 **All three are far weaker than any current ensemble member** (XGBoost/LightGBM/CatBoost
 all score 0.54–0.55 test PR-AUC). Logistic regression in particular collapses on test —
 barely above the ~0.035 random baseline in absolute terms, and by far the largest
-val→test degradation measured anywhere this session.
+val→test degradation measured anywhere in the ensemble experiments.
 
 **6-model ensemble (adding all three, plain average): test PR-AUC 0.4939 — far below the
 confirmed 3-model ensemble's 0.5628.** Paired bootstrap against the confirmed 3-model
@@ -622,7 +622,7 @@ expected marginal value even under optimal weighting looks small. Not pursued fu
 **Decision: not adopted. Confirmed configuration remains the untuned 3-model ensemble**
 (XGBoost + untuned LightGBM + untuned CatBoost, test PR-AUC 0.5628, CI [+0.0081, +0.0146]).
 
-**Read across all five "make it better" experiments this session** (hyperparameter sweep,
+**Read across all five "make it better" experiments** (hyperparameter sweep,
 segment calibration, ensemble diagnostic, LightGBM tuning, diversity check): one clean,
 confirmed win (the untuned 3-model ensemble), and four independent negative controls, three
 of them model-side interventions that all failed for the same underlying reason — the

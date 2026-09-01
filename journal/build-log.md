@@ -1,3 +1,12 @@
+<!--
+Engineering log, append-only, written as the work happened — oldest entry first. Numbers
+evolve down the page as the project progressed (the test suite grew 13 → 36 → 41 → 70 → 98;
+the bug tally reached 20 = 17 self-found + 3 from automated code review; the shipped model
+went single-XGBoost → 2-model ensemble). Each figure is correct as of its own entry, not a
+contradiction with a later one. Current-state numbers live in README.md, docs/eval_report.md
+and CLAUDE.md §13 — this file is the trail of how they were reached.
+-->
+
 # Locking the track and scope
 
 ## Decisions
