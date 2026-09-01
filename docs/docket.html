@@ -319,8 +319,8 @@
         </div>
       </div>
       <div class="dentry">
-        <div class="dhead"><span class="dtag">REVIEW</span><h3>Handed it to an outside reviewer. Twice.</h3><span class="verdict-chip good">3 real defects</span></div>
-        <p>With the build already called done, an independent agent reviewed the whole repository — then reviewed it again after the first round of fixes. Both rounds found something real, including one defect <em>inside the first round's own fix</em>. Three genuine bugs, all fixed with regression tests; three production-grade gaps deliberately left open and written into the exception list instead of quietly omitted. Detailed in Exhibit 07.</p>
+        <div class="dhead"><span class="dtag">REVIEW</span><h3>Ran it through automated code review. Twice.</h3><span class="verdict-chip good">3 real defects</span></div>
+        <p>With the build already called done, a separate AI code-review agent was run over the whole repository — then run again after the first round of fixes. Both rounds turned up something real, including one defect <em>inside the first round's own fix</em>. Three genuine bugs, all fixed with regression tests; three production-grade gaps deliberately left open and written into the exception list instead of quietly omitted. Detailed in Exhibit 07.</p>
       </div>
     </div>
   </section>
@@ -403,7 +403,7 @@
 
     <div class="outcome-row">
       <div class="outcome-cell"><div class="t">Found by own testing</div><div class="v">17</div></div>
-      <div class="outcome-cell"><div class="t">Found by outside review</div><div class="v">3</div></div>
+      <div class="outcome-cell"><div class="t">Found by AI code review</div><div class="v">3</div></div>
       <div class="outcome-cell"><div class="t">Shipped</div><div class="v" style="color:var(--good)">0</div></div>
     </div>
 
@@ -413,7 +413,7 @@
     </div>
     <div class="record">
       <div class="k">Train ≠ serve</div>
-      <div><div class="choice">One number, computed two different ways</div><p>Found by an outside reviewer after the build was already called done: the live engine computed one feature's spread with a different divisor than the training pipeline used. For a customer history of <span class="mono">[0, 2]</span> that is <span class="mono">1.0</span> in production against <span class="mono">1.4142</span> in training — on a feature the shipped model genuinely consumes. Fixed, and pinned by a test that computes both versions and demands they agree.</p></div>
+      <div><div class="choice">One number, computed two different ways</div><p>Surfaced by an automated code-review pass after the build was already called done: the live engine computed one feature's spread with a different divisor than the training pipeline used. For a customer history of <span class="mono">[0, 2]</span> that is <span class="mono">1.0</span> in production against <span class="mono">1.4142</span> in training — on a feature the shipped model genuinely consumes. Fixed, and pinned by a test that computes both versions and demands they agree.</p></div>
     </div>
     <div class="record">
       <div class="k">Silent allow</div>

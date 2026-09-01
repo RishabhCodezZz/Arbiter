@@ -142,8 +142,8 @@ notebook can't demonstrate graceful degradation, an audit trail, or "would you t
 
 Every one of these was broken on purpose and confirmed to recover correctly — not assumed
 from reading the code. Full account of every bug found this way (20, across the project —
-including three real defects a two-round external code review caught after the fact: a
-train/serve ddof mismatch on one feature, a malformed-artifact path that crashed instead
+including three real defects two rounds of automated AI code review caught after the fact:
+a train/serve ddof mismatch on one feature, a malformed-artifact path that crashed instead
 of failing closed, and a NaN calibrator coefficient that would have produced a silent
 `allow`):
 [`journal/`](journal/build-log.md).

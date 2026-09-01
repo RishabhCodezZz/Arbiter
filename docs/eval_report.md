@@ -363,7 +363,7 @@ panel will find it anyway if it isn't. (This list has moved several times: down 
 when the false-positive-cost estimate — previously item 5 — was resolved with an exact
 number in §4; up to 8 with the error-analysis variance finding; up to 9 with the
 segment-calibration confound; up to 10 with the ensemble-rebuild granular-recompute gap;
-up to 14 after a two-round external code review found three real defects (all fixed —
+up to 14 after two rounds of automated AI code review found three real defects (all fixed —
 item 11) and flagged three production gaps left open on purpose (items 12–14). Same
 discipline every time: fix it and say so, don't quietly renumber and hope no one compares
 versions.)
@@ -455,8 +455,9 @@ versions.)
     a fresh Kaggle export of full-feature rows for a risk-inclusive sample — not done here
     rather than faked with placeholder entries.
 
-11. **An external code review ran in two rounds after the migration; it found three real
-    defects (all fixed) and flagged production gaps deliberately left open (items 12–14).**
+11. **Two rounds of automated AI code review (Codex) ran over the repo after the migration;
+    they found three real defects (all fixed) and flagged production gaps deliberately left
+    open (items 12–14).**
     *Round 1 — fixed:* (a) a train/serve skew — the online `CoarseStats.std()` used
     population std (ddof=0) while training builds `uid_ambiguity_std_prior` with
     `expanding().std()` (ddof=1); for a history of `[0, 2]` that is `1.0` vs `1.4142` on a

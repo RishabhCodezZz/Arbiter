@@ -1593,11 +1593,11 @@ Verified after: `pytest tests/` and `python scripts/demo_engine.py` both still g
 shows every remaining single-model number is inside an explicitly-labelled historical
 stage record.
 
-## External code review (Codex) — two real bugs in shipped `src/`, plus honest production gaps
+## Automated AI code review (Codex) — two real bugs in shipped `src/`, plus honest production gaps
 
-**How it surfaced.** After the consistency migration, the repo was handed to an independent
-review agent (Codex). It came back with 3 P1 and 4 P2 findings. I verified each one against
-the actual code before touching anything — most were right.
+**How it surfaced.** After the consistency migration, the repo was run through an
+independent AI code-review agent (Codex). It came back with 3 P1 and 4 P2 findings. I
+verified each one against the actual code before touching anything — most were right.
 
 **Bug 1 — train/serve skew on `uid_ambiguity_std_prior` (real, shipped).**
 `src/store.py`'s `CoarseStats.std()` computed `sqrt(sumsq/n - mean**2)` — population std,
@@ -1656,7 +1656,7 @@ Note on Codex's run: it reported it "could not verify the test suite locally" �
 resolved to the Windows Store stub (`WindowsApps\...\python.exe`), not the project venv.
 That's its environment, not the repo; `.venv\Scripts\python.exe -m pytest` runs clean here.
 
-## External code review — round 2: the NaN calibrator that slips past `float()`
+## Automated AI code review — round 2: the NaN calibrator that slips past `float()`
 
 **How it surfaced.** Codex re-reviewed after the round-1 fixes landed. It confirmed all
 three round-1 fixes were genuine, then found a new P1 in the round-1 fix itself.

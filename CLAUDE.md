@@ -444,11 +444,11 @@ dev decomposition attributed the val→test gap to temporal mismatch, not overfi
 follow-up experiments then tested whether the shipped model could be beaten — five negative
 (harder regularization, per-segment calibration, LightGBM tuning, weak-model diversity, 3-vs-
 2-model rupee value), one positive: averaging in an untuned LightGBM, which shipped as the
-2-model ensemble after confirming the gain survives the real rupee policy. Finally, a
-two-round external code review found three real defects (a train/serve `ddof` skew, a
-malformed-artifact crash path, a NaN calibrator that could produce a silent `allow`), all
-fixed with regression tests, plus three production-grade gaps disclosed in the exception
-list rather than closed. Every number above is in `docs/experiments.md`; every failure and
+2-model ensemble after confirming the gain survives the real rupee policy. Finally, two
+rounds of automated AI code review over the repo found three real defects (a train/serve
+`ddof` skew, a malformed-artifact crash path, a NaN calibrator that could produce a silent
+`allow`), all fixed with regression tests, plus three production-grade gaps disclosed in
+the exception list rather than closed. Every number above is in `docs/experiments.md`; every failure and
 fix, written as it happened, is in `journal/`.
 
 ---
