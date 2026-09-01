@@ -14,7 +14,7 @@
 # the aggregation window includes the future. That's the whole comparison: not "different
 # features", one specific methodological choice, isolated.
 #
-# EXPECTED RESULT, stated up front so nobody mistakes this for a failure later (PLAN.md):
+# EXPECTED RESULT, stated up front so nobody mistakes this for a failure later:
 # the leaky model is SUPPOSED to score higher. That's the finding, not a bug. We do
 # not tune this model to lose, and we do not tune it to win either — same hyperparameters as
 # V1, so the ONLY variable being measured is causal-vs-leaky, nothing else.

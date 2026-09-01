@@ -228,7 +228,7 @@ print(f"\nV2 test was PR-AUC 0.5446 / ROC-AUC 0.9014 -> delta: "
 # in the "final refit" cell below, once, for the reported number.
 #
 # HARD TIME BUDGET: 3 hours wall-clock (`timeout`), or 60 trials, whichever comes first —
-# per PLAN.md's pre-committed G4 gate. If GPU quota runs out mid-search, Optuna still
+# per the pre-committed G4 gate. If GPU quota runs out mid-search, Optuna still
 # returns its best trial so far; nothing is lost by stopping early.
 
 # %%

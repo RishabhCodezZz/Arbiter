@@ -190,7 +190,7 @@ vs no system / +₹66.77L vs naive. The table below is the single-XGBoost run an
 ## Cost model parameters — FINAL
 
 These are assumptions, not facts, and the panel will ask where they came from. Full
-citations: PLAN.md §5.
+citations: `CLAUDE.md` §6.
 
 | Parameter | Value | Source / justification |
 |---|---|---|
@@ -667,4 +667,4 @@ SHAP). Revisited explicitly rather than proceeding silently: **the final decisio
 ship the 2-model ensemble** (XGBoost + untuned LightGBM), simplicity as the tiebreaker per
 ML Yearning ch09's optimizing/satisficing framework — when the metric that governs every
 other decision here can't separate two options, fall back to the satisficing constraint.
-The engine was rebuilt around the 2-model ensemble; see PLAN.md §0 / CLAUDE.md §13.
+The engine was rebuilt around the 2-model ensemble; see `CLAUDE.md` §13.

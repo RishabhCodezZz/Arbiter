@@ -1,9 +1,6 @@
 # Submission
 
-Final, panel-ready copy for the buildathon form's build-related fields. Personal/admin
-fields (name, college, availability, stipend duration, resume) and the pitch video link
-are filled in directly on the form, not tracked in this repo — kept out deliberately,
-the same way `.gitignore` keeps the pitch-video script out of `private/`.
+Panel-ready copy for the buildathon form's build-related fields.
 
 ---
 
@@ -59,8 +56,6 @@ mechanism: [`README.md`](README.md); full evidence: [`docs/eval_report.md`](docs
 ## Repo
 
 **https://github.com/RishabhCodezZz/arbiter**
-
-*(Pitch video link goes directly into the Google Form, not tracked here.)*
 
 ## What broke, and how you got out
 

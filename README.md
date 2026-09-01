@@ -204,7 +204,6 @@ docs/         experiments.md (the measured ladder + both evidence experiments), 
               docket.html (narrative walkthrough, self-contained, for pitch narration)
 journal/      Engineering log — every real bug, found and fixed, written as it happened
 CLAUDE.md     Context and rationale — why this track, why this data, what the rubric wants
-PLAN.md       Execution — gates, pass/fail branches, risk register, live status
 ```
 
 ## Setup, in full

@@ -8,7 +8,7 @@ THE QUESTION THIS ANSWERS: can a general-purpose LLM score fraud probability wel
 fast enough, cheaply enough to replace XGBoost? Per CLAUDE.md sec 6, the expected answer is
 no on all three axes — this script is what turns that expectation into a measured number,
 which is the actual evidence for the rubric's "where you chose not to use one" line. Per
-PLAN.md's G9, BOTH outcomes are usable: if the LLM is surprisingly competitive, report that
+Per the project's G9 gate, BOTH outcomes are usable: if the LLM is surprisingly competitive, report that
 honestly and argue deployment on latency/cost grounds instead.
 
 WHAT IT DOES, for each transaction in the sample:

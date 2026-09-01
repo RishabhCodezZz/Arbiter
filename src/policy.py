@@ -2,8 +2,8 @@
 The cost model — IDENTICAL parameters and formulas to notebooks/04_cost_model.py. If these
 two ever drift apart, the notebook's measured lift (docs/experiments.md) stops describing
 what the engine actually does. Kept in one place conceptually; duplicated here only because
-the notebook runs on Kaggle and this runs locally — see PLAN.md for the tracked follow-up
-about consolidating this once both environments can share one source file.
+the notebook runs on Kaggle and this runs locally — consolidating this once both
+environments can share one source file is a tracked follow-up.
 
 Every number is sourced — see notebooks/04_cost_model.py's markdown for citations
 (Razorpay's own chargeback-fee range and MDR, 3D Secure studies, checkout-friction studies).

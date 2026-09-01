@@ -161,7 +161,7 @@ print(f"\nreproduced test PR-AUC: {average_precision_score(y_te, cal_te):.4f} "
 # directly into a cost model with an Indian ₹500 chargeback fee would make the fee absurdly
 # large relative to typical transaction size (median legit transaction ≈ 68 raw units —
 # treated as ₹68, a ₹500 fee would dwarf it and make "block everything" trivially optimal).
-# That failure mode was anticipated in the plan (PLAN.md G6: "does the cost curve even have
+# That failure mode was anticipated (G6 gate: "does the cost curve even have
 # an interior minimum") — catching the actual mechanism here, before running anything,
 # beats discovering it empirically as a mystery later.
 #
@@ -244,7 +244,7 @@ def value_block(p, amt):
 # expected-value formula — this is what actually happened, not a projection), find the
 # minimum-loss point.
 #
-# GATE CHECK (PLAN.md G6): does the minimum land INSIDE the range, not at threshold 0 or 1?
+# GATE CHECK (G6): does the minimum land INSIDE the range, not at threshold 0 or 1?
 # If it's at an edge, the whole "choose a threshold" framing has no story — pivot to the
 # sensitivity map instead. Checked explicitly below, not assumed.
 
@@ -461,7 +461,7 @@ USD->INR conversion: {USD_TO_INR}
 # %% [markdown]
 # ## Engine-build addendum — export portable artifacts for the local decision engine
 #
-# WHY THIS EXISTS: CLAUDE.md/PLAN.md are explicit that this is where the project STOPS being a
+# WHY THIS EXISTS: CLAUDE.md is explicit that this is where the project STOPS being a
 # notebook — the decision engine has to load a saved artifact and run on plain CPU, no GPU,
 # no training, from a fresh Python process on the local machine. This cell exports exactly
 # what `src/` needs to do that: the trained model, the calibrator, the feature list, the

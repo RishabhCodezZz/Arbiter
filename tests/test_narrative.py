@@ -1,5 +1,5 @@
 """
-The LLM-fallback layer. Formalizes what PLAN.md's scripts/demo_fallbacks.py was tracking
+The LLM-fallback layer. Formalizes what an earlier scripts/demo_fallbacks.py scratch script was tracking
 as still-pending: LLM-timeout and LLM-garbage-response as their own NAMED tests, not just
 mechanics proven indirectly via the engine's integration tests. No real network calls
 anywhere in this file — render_llm's `_client` parameter exists specifically so failure
