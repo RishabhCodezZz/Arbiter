@@ -14,44 +14,29 @@ Panel-ready copy for the buildathon form's build-related fields.
 
 ## What it solves
 
-A merchant's ledger doesn't have an accuracy line — it has profit and loss. Fraud that
-slips through costs the full transaction amount, a chargeback dispute fee, and a payment
-processing fee that's never refunded. Blocking a genuine customer by mistake costs that
-sale, and probably their future business too. Most fraud-detection projects train a model,
-report an accuracy number, and leave the actual business decision — and its cost — as
-someone else's problem.
+Arbiter is a fraud decision system, not a fraud classifier. For every payment it prices
+three outcomes — allow, step-up verification, or block — in real rupees and takes whichever
+loses the least money, per transaction, because a ₹500 and a ₹50,000 payment don't carry
+the same risk at the same fraud probability.
 
-Arbiter doesn't output a fraud score. For every payment it computes the real rupee cost of
-three outcomes — allow, step-up (extra verification), block — and picks whichever one
-loses the least money, per transaction, because a ₹500 payment and a ₹50,000 payment don't
-carry the same risk at the same fraud probability. The engine is a 2-model ensemble
-(XGBoost + LightGBM, simple-averaged) — a 3rd model and further tuning were both tried and
-measured to not help, so neither shipped. On a real 92,427-transaction held-out test month,
-that reframing is worth a measured **+₹1.678 crore** over running no fraud system at all,
-and **+₹77.03 lakh** over the industry-default 0.5-probability cutoff most teams would ship
-instead — with 100.16% of that number computed directly from real fraud labels, not a
-modeled assumption (the modeled step-up component is actually slightly negative).
-Bootstrapped 2,000 times on the same real month: both lifts hold at 95% confidence
-(₹1.510cr–₹1.850cr and ₹64.9L–₹89.5L) — not a favorable draw from one lucky month.
+Built solo for the Razorpay AI Buildathon 2026 — Track 02, AI Risk Manager.
 
-That lift isn't available to a simple rule, either. The best possible amount-only
-threshold — swept for its own optimum, not picked arbitrarily — turns out to be high
-enough that it never blocks a single transaction in this dataset, collapsing to exactly
-the "no system" value. Fraud here isn't separable by transaction size alone; the entire
-lift is attributable to the model's actual probability signal, not to any business rule a
-merchant could have picked without one.
+Measured on one untouched 92,427-transaction held-out test month:
 
-The track lists four example directions — a chargeback evidence responder, a return-risk
-scorer, a fraud-spike detector, an abuse-ring sentinel. Arbiter is deliberately none of
-these on its own; it's the decision layer all four would sit downstream of, the thing that
-turns any of their outputs into an allow/step-up/block call priced in real rupees. The one
-of the four we scoped closest to is the evidence responder (Component D) — cut early as a
-stretch goal, first on the pre-committed cut order, so the core decision engine, its audit
-trail, and the causal-honesty evidence stayed the priority. Not attempted, not hidden.
+- **+₹1.68 crore** vs running no fraud system, and **+₹77 lakh** vs the industry-default
+  0.5 cutoff — both holding at 95% confidence across 2,000 bootstrap resamples.
+- **False-positive cost reported exactly**, not estimated: 223 genuine customers wrongly
+  blocked, ₹13.2 lakh.
+- **Deliberately gradient-boosted trees, not an LLM** — benchmarked head to head, the model
+  beats a capable LLM 3.65x on accuracy and scores each transaction about 60x faster
+  (~100 ms per transaction on plain CPU, 65–135 ms across runs, vs a ~6.7 s median). The
+  LLM only writes the one-line analyst explanation, never the decision.
 
-Every consequential decision — the cost parameters, the calibration method, whether an LLM
-belongs anywhere near the scoring path — is measured and logged, not asserted. Full
-mechanism: [`README.md`](README.md); full evidence: [`docs/eval_report.md`](docs/eval_report.md).
+Runs on plain CPU from a saved artifact — no notebook, no GPU, no retraining. Append-only
+replayable audit trail, 105 tests, and every designed failure path broken on purpose to
+confirm it recovers.
+
+Full mechanism: [`README.md`](README.md); full evidence: [`docs/eval_report.md`](docs/eval_report.md).
 
 ## Repo
 
