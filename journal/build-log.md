@@ -280,7 +280,7 @@ Two real corrections to `scripts/llm_benchmark.py` as a result: (1) switched fro
 
 With `OLLAMA_API_KEY` set, `--test-connection` succeeded on the first try against the real cloud API: `nemotron-3-ultra` returned a valid, parseable `fraud_probability` for a test transaction. Good news — the whole chain (auth, endpoint, request format, response parsing) works end to end.
 
-**The latency is itself a real, measured finding, not just a plumbing detail: one call took 29.4 seconds.** XGBoost scores a transaction in microseconds. That's not a rough "LLMs are slower" hand-wave for the writeup — it's a concrete, reproducible number, already roughly six orders of magnitude apart on a single paired measurement, before a single accuracy comparison has even been run.
+**The latency is itself a real, measured finding, not just a plumbing detail: one call took 29.4 seconds.** [Later corrected: this entry then said "XGBoost scores a transaction in microseconds ... roughly six orders of magnitude apart" — that figure was never actually measured, only assumed. Timed properly in the round-3 pass: the ensemble's end-to-end `score()` is ~70ms per transaction on plain CPU (64–95ms across runs), so the real gap is about **two** orders of magnitude, not six. Still decisive, and still well inside a 200ms gateway budget the LLM is 30x over — but the honest number is ms, not µs.] The point stands regardless: an LLM call here is seconds, a local model call is milliseconds, measured before a single accuracy comparison was run.
 
 **Consequence, caught before it became a problem instead of after:** at ~29s/call, scoring the full 500-row sample sequentially is ~4 hours — likely longer than one free-tier session window (the account's own usage panel shows a 3-hour session reset). Running that blind, with no checkpointing, risked losing potentially hundreds of completed calls to a mid-run cutoff. Added resumable checkpointing to `scripts/llm_benchmark.py` before running anything long: every call (success or failure) is appended and flushed to a per-sample JSONL progress file immediately, not batched; a fresh invocation loads that file first and only calls the LLM for transactions not already in it. A `--reset` flag exists for deliberately starting over. This is the same "don't lose progress to an interruption" instinct as the audit log's append-only design, applied to a long-running script instead of a production decision trail.
 
@@ -342,10 +342,10 @@ Re-ran on Kaggle with both fixes. Fully clean this time: 198/200 succeeded (2 ti
 
 | | PR-AUC | Latency |
 |---|---|---|
-| XGBoost | **0.5735** | microseconds |
+| XGBoost | **0.5735** | ~70ms (CPU, timed in round 3) |
 | `gpt-oss:20b` | 0.1571 | median 6.7s |
 
-On this 200-row sample (10 fraud cases, ~5% base rate → random PR-AUC ≈ 0.05): XGBoost scores ~11.5x random, the LLM scores ~3.1x random — genuinely better than guessing, not a strawman, but XGBoost wins by **3.65x on accuracy** and is roughly six orders of magnitude faster per call. This is exactly the predicted-and-now-measured "where we chose not to use an LLM" evidence, obtained with a real, capable, fairly-chosen model (`gpt-oss:20b` was on the original free-model shortlist, not a deliberately weak strawman) on clean, honestly-scoped features (same nameable-columns-only prompt design used throughout).
+On this 200-row sample (10 fraud cases, ~5% base rate → random PR-AUC ≈ 0.05): XGBoost scores ~11.5x random, the LLM scores ~3.1x random — genuinely better than guessing, not a strawman, but XGBoost wins by **3.65x on accuracy** and is about two orders of magnitude faster per call (~70ms CPU vs 6.7s median — the "microseconds" claim was an unmeasured assumption, corrected in round 3; see that entry). This is exactly the predicted-and-now-measured "where we chose not to use an LLM" evidence, obtained with a real, capable, fairly-chosen model (`gpt-oss:20b` was on the original free-model shortlist, not a deliberately weak strawman) on clean, honestly-scoped features (same nameable-columns-only prompt design used throughout).
 
 **Worth stating precisely for the eventual report:** 0.5735 is XGBoost's score on this specific 200-row comparison sample, not the headline 0.5514 reported from the full held-out test month (notebooks/04) — different sample sizes, expected to differ, and the full-month number remains the official reported XGBoost metric. This 200-row number exists specifically to be a fair, identical-data comparison against the LLM, nothing more.
 
@@ -1766,7 +1766,24 @@ so a reproducer can record and compare them. And if a manifest ever records an
 forward-compatible with a proper release manifest without a Kaggle re-run.
 `tests/test_model.py::test_artifact_checksum_mismatch_fails_closed`.
 
+**Also fixed this pass — an unmeasured claim, not a code bug.** Every doc said the model
+scores "in microseconds" and beat the LLM by "~6 orders of magnitude on latency." Filling a
+form field I went to cite the exact number and found it had *never been measured* — it was
+an assumption written down early (journal entry near the first LLM call) and copied forward
+into `eval_report §7`, `README`, `CLAUDE`, `SUBMISSION`, `docket`, same shape as the
+"11 vs 13" stale-count bug. Timed it properly with `time.perf_counter` over the real
+held-out sample: the ensemble's end-to-end `score()` is **~70ms per transaction on plain
+CPU** (64–95ms across runs), of which ~42ms is a one-row pandas DataFrame build and ~19ms
+is the sklearn `predict_proba` wrapper — the gradient-boosted trees themselves are sub-ms.
+So the real gap is **~100x / about two orders of magnitude**, not six. Corrected everywhere,
+with the honest note that a production serving path (raw DMatrix, no pandas) would be much
+faster; the "microseconds" journal entries are fixed in place with a bracketed correction
+rather than rewritten, same as the 11-vs-13 fix. The conclusion is unchanged — an LLM call
+is seconds, this is tens of milliseconds, well inside a 200ms gateway budget the LLM is 30x
+over — only the multiplier was wrong.
+
 **Verified.** `pytest tests/` → **105 passed** (was 98; +7 across store/model/audit/engine).
 `python scripts/demo_engine.py` → `ALL CHECKS PASSED` (now also prints the artifact
 checksums). `py_compile` clean. Project bug tally: **23** (17 self-found + 6 across three
-review rounds).
+review rounds); the latency figure above was an unmeasured-claim correction, not counted as
+a defect.

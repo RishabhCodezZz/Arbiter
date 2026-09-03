@@ -432,9 +432,9 @@
     <div class="outcome-row" style="margin-top:14px;">
       <div class="outcome-cell"><div class="t">XGBoost</div><div class="v">0.5735 <span class="mono" style="font-size:.6em;color:var(--muted)">PR-AUC</span></div></div>
       <div class="outcome-cell"><div class="t">gpt-oss:20b, fair shot</div><div class="v">0.1571 <span class="mono" style="font-size:.6em;color:var(--muted)">PR-AUC</span></div></div>
-      <div class="outcome-cell"><div class="t">Latency, per call</div><div class="v" style="font-size:1.1rem">µs <span style="color:var(--muted)">vs.</span> 6.7s</div></div>
+      <div class="outcome-cell"><div class="t">Latency, per call</div><div class="v" style="font-size:1.1rem">~70ms <span style="color:var(--muted)">vs.</span> 6.7s</div></div>
     </div>
-    <p>A real, capable model — not a strawman picked to lose — still loses by <strong>3.65×</strong> on accuracy and roughly six orders of magnitude on speed. That's the answer to "where you chose not to use one," measured, not assumed.</p>
+    <p>A real, capable model — not a strawman picked to lose — still loses by <strong>3.65×</strong> on accuracy and about <strong>100×</strong> on speed (~70&thinsp;ms per transaction on plain CPU, end to end, vs a ~6.7&thinsp;s median). That's the answer to "where you chose not to use one," measured, not assumed.</p>
 
     <h4 style="margin:36px 0 10px; font-size:1.15rem;">What does refusing to cheat actually cost?</h4>
     <div class="tbl-wrap">

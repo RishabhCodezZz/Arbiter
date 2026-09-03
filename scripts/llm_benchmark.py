@@ -345,8 +345,9 @@ def finalize_and_report(transactions, xgb_probs, llm_probs, llm_latencies_ms, fa
     if llm_latencies_ms:
         print(f"LLM latency:     median {summary['llm_latency_ms']['median']:.0f}ms, "
               f"mean {summary['llm_latency_ms']['mean']:.0f}ms")
-    print("XGBoost latency: microseconds per call (not separately timed here — see "
-          "notebooks/04's own training-time benchmarks for that number).")
+    print("XGBoost latency: ~70ms per transaction end-to-end on plain CPU (not timed in "
+          "this script; measured separately with time.perf_counter over the held-out sample — "
+          "mostly a 1-row pandas build + the sklearn wrapper, the trees are sub-ms).")
     if not is_full_size:
         print("\n!! This ran on the 25-row DRY RUN sample. Re-run once "
               f"{PREFERRED_SAMPLE} exists before citing any number above.")
