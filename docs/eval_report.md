@@ -242,18 +242,19 @@ re-running the plotting cell already complete and correct in
 
 | | PR-AUC | Latency/call |
 |---|---|---|
-| XGBoost (ensemble, CPU) | **0.5735** | ~70ms end-to-end |
+| XGBoost (ensemble, CPU) | **0.5735** | ~100ms end-to-end |
 | `gpt-oss:20b` (real model, fair shot, Kaggle GPU) | 0.1571 | ~6.7s median |
 
 On this 200-row comparison sample (5% fraud rate, random PR-AUC ≈ 0.05): XGBoost scores
 ~11.5x random, the LLM ~3.1x random — genuinely better than guessing, not a strawman
 comparison, and XGBoost still wins by **3.65x** on accuracy and about **two orders of
-magnitude on latency** (~70ms per transaction on plain CPU, end to end — measured with
-`time.perf_counter` over the real held-out sample, 64–95ms across runs — vs the LLM's ~6.7s
-median; the LLM is ~30x over a 200ms gateway budget, the ensemble is well inside it). Most
-of that ~70ms is a one-row pandas DataFrame build plus the sklearn wrapper; the
-gradient-boosted trees score in under a millisecond, so a production serving path would be
-faster still. This is the direct evidence for the rubric's "where you chose not to use
+magnitude on latency** (~100ms per transaction on plain CPU, end to end — measured with
+`time.perf_counter` over the real held-out sample, **65–135ms across runs** on a laptop,
+load-dependent — vs the LLM's ~6.7s median, so ~50–100x; the LLM is ~30x over a 200ms
+gateway budget, the ensemble stays under it). Most of that ~100ms is a one-row pandas
+DataFrame build plus the sklearn `predict_proba` wrapper; the gradient-boosted trees score
+in under a millisecond, so a production serving path (raw DMatrix, no pandas) would be much
+faster. This is the direct evidence for the rubric's "where you chose not to use
 one" line — benchmarked, not assumed. Full saga (a real cloud-API reliability failure,
 the pivot to self-hosting on Kaggle's GPU, both fixed and verified): `journal/`.
 

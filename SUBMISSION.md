@@ -115,8 +115,8 @@ cloud API under real load simply wasn't reliable enough for this job, and moving
 entire benchmark onto a different, structurally immune resource instead: a GPU with no
 external API and no shared rate limit. That version ran clean, and it's the number
 actually reported: XGBoost beats a real, capably-chosen LLM by **3.65x** on accuracy and scores each
-transaction about a hundred times faster (~70ms on plain CPU, end to end, vs a ~6.7s
-median) for this task — measured evidence for exactly the "where you chose not to use AI"
+transaction roughly 60x faster (~100ms on plain CPU, end to end, 65–135ms across runs, vs
+a ~6.7s median) for this task — measured evidence for exactly the "where you chose not to use AI"
 question the rubric asks.
 
 **The tally.** 23 real defects across the project — 17 found by our own testing (running

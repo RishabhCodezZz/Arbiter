@@ -12,7 +12,7 @@ through, ask for extra verification, or block it. Built solo for Razorpay's AI B
 | **Model quality** | PR-AUC **0.5597** / ROC-AUC **0.9126** — 16.1x random on this dataset's ~3.5% fraud rate |
 | **False-positive cost** | **223** genuine customers wrongly blocked, exact cost **₹13.20 lakh** — lower than the single model's 233 / ₹17.97L on both counts, found while optimizing for something else entirely |
 | **Honesty check** | 100.16% of the ₹17.355cr headline comes straight from real fraud labels — the modeled step-up component is actually slightly negative, not a rounding artifact |
-| **AI-judgment evidence** | XGBoost beats a real LLM (`gpt-oss:20b`, given a fair shot) by **3.65x** on this task, and scores it ~100x faster per call (~70ms on plain CPU vs a ~6.7s median) — [full benchmark](docs/experiments.md) |
+| **AI-judgment evidence** | XGBoost beats a real LLM (`gpt-oss:20b`, given a fair shot) by **3.65x** on this task, and scores it roughly 60x faster per call (~100ms on plain CPU, 65–135ms across runs, vs a ~6.7s median) — [full benchmark](docs/experiments.md) |
 | **Causal-honesty cost** | Refusing to use future information (unlike the original Kaggle-winning solution) costs only **+0.0066 PR-AUC** — honesty is nearly free here |
 
 Full story, in order, including everything that broke: [`journal/`](journal/build-log.md).
@@ -98,9 +98,9 @@ the same 200 held-out transactions (a comparison sample sized for a fair identic
 test — not the full test month, so 0.5735 here differs from the 0.5597 headline; see
 [`docs/eval_report.md`](docs/eval_report.md) §7): XGBoost PR-AUC 0.5735 vs `gpt-oss:20b`
 PR-AUC 0.1571 — a real, capable model given a genuinely fair shot (not a strawman), still
-losing by 3.65x on accuracy and about 100x on latency (~70ms per transaction on plain CPU,
-end to end, vs a 6.7s median — comfortably inside a 200ms gateway budget, which the LLM is
-~30x over). This is the evidence behind "where we chose not to use AI."
+losing by 3.65x on accuracy and roughly 60x on latency (~100ms per transaction on plain CPU,
+end to end — 65–135ms across runs — vs a 6.7s median; the ensemble stays under a 200ms
+gateway budget, the LLM is ~30x over it). This is the evidence behind "where we chose not to use AI."
 
 **What does refusing to cheat actually cost?** The original Kaggle-winning solution uses
 each client's *future* transactions to score a *past* one — legal on a static leaderboard,
