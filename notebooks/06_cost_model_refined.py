@@ -183,7 +183,7 @@ print(f"\nreproduced test PR-AUC: {average_precision_score(y_te, cal_te):.4f} "
 # %%
 USD_TO_INR = 95.41  # live, dated quote, Google/Morningstar — was 83.0 (a rough
 # placeholder, not checked) in the first run. Corrected once a real dated source was
-# available, same standard as the Razorpay MDR number above: cite it, don't guess it.
+# available, same standard as the gateway MDR number above: cite it, don't guess it.
 # Note CHARGEBACK_FEE (fixed Rs) does NOT scale with this rate the way amount-proportional
 # terms (margin, MDR, LTV penalty) do — so this correction has a real, if modest, effect on
 # the reported policy and lift figures, not just a cosmetic one.
@@ -197,13 +197,13 @@ print(f"median fraud transaction: Rs {np.median(amt_te_inr[y_te.values == 1]):,.
 # %% [markdown]
 # ## Cost model parameters — sourced, not invented
 #
-# Every number below is a real, cited assumption, not a fit to this data. The panel will
+# Every number below is a real, cited assumption, not a fit to this data. A reviewer will
 # ask where these came from — here's the answer, in the code, not just in a slide.
 #
 # | Parameter | Value | Source |
 # |---|---|---|
-# | Chargeback fee | Rs 500 | Razorpay's own disclosed dispute-fee range is Rs 200-600; midpoint |
-# | Payment processing fee (MDR) | 2.36% of amount | **Razorpay's own pricing page**: uniform 2% platform fee on every successful domestic transaction (cards/UPI/netbanking/wallets alike) + 18% GST on that fee = 2.36% effective. Charged at processing time; NOT refunded when a sale later reverses via chargeback — a genuinely separate loss from the chargeback fee itself, not double-counting. |
+# | Chargeback fee | Rs 500 | a typical Indian gateway's published dispute-fee range is Rs 200-600; midpoint |
+# | Payment processing fee (MDR) | 2.36% of amount | **a typical Indian gateway's published pricing**: uniform 2% platform fee on every successful domestic transaction (cards/UPI/netbanking/wallets alike) + 18% GST on that fee = 2.36% effective. Charged at processing time; NOT refunded when a sale later reverses via chargeback — a genuinely separate loss from the chargeback fee itself, not double-counting. |
 # | Merchant margin | 20% | Blended e-commerce assumption (5%-50%+ by vertical) — swept below |
 # | Step-up stops fraud | 60% | 3D Secure fraud-reduction studies cite 40-70%; midpoint |
 # | Genuine customer drop-off at step-up | 15% | Checkout-friction studies cite 17-21% for FULL checkout complexity; a single OTP prompt is less friction than that, so set conservatively lower |
@@ -217,7 +217,7 @@ print(f"median fraud transaction: Rs {np.median(amt_te_inr[y_te.values == 1]):,.
 
 # %%
 CHARGEBACK_FEE = 500.0
-MDR_RATE = 0.02 * 1.18  # 2% platform fee + 18% GST, Razorpay's own disclosed pricing
+MDR_RATE = 0.02 * 1.18  # 2% platform fee + 18% GST, published payment-gateway pricing
 MARGIN = 0.20
 P_STOP = 0.60
 P_DROPOFF = 0.15
@@ -226,7 +226,7 @@ LTV_MULTIPLIER = 3.0
 
 def value_allow(p, amt):
     """Expected Rs value of allowing a transaction. MDR is paid on EVERY processed
-    transaction regardless of outcome — genuine or fraud, Razorpay keeps its fee."""
+    transaction regardless of outcome — genuine or fraud, the gateway keeps its fee."""
     return (1 - p) * (MARGIN * amt - MDR_RATE * amt) - p * (amt + CHARGEBACK_FEE + MDR_RATE * amt)
 
 
@@ -248,7 +248,7 @@ def value_block(p, amt):
 
 
 # %% [markdown]
-# ## The classic 2-way cost curve (allow vs block, single threshold) — for the pitch video
+# ## The classic 2-way cost curve (allow vs block, single threshold) — for the presentation
 #
 # Simpler than the real 3-way policy below, but this is the intuitive visual: sweep every
 # threshold, plot total REALIZED value (computed from actual test-month labels, not the
@@ -394,9 +394,9 @@ print(f"lift vs naive 0.5:    Rs {arbiter_value - baseline_naive:,.0f}")
 # %% [markdown]
 # ## Illustrative policy bands — "what does this actually mean for one transaction"
 #
-# The real policy is per-transaction (varies with amount). For the pitch video / README,
+# The real policy is per-transaction (varies with amount). For the presentation / README,
 # show the effective probability bands at a few representative amounts — this is what a
-# merchant or panelist will actually want to see.
+# merchant or reviewer will actually want to see.
 
 # %%
 for demo_amt in [500, 2000, 10000, 50000]:
@@ -576,7 +576,7 @@ sample_df = pd.concat([repeat_rows, rng_sample]).drop_duplicates(subset="Transac
 # time. Confirmed directly: str(0.0) never matches a manifest key like "W".
 #
 # NOTE this is a TEST-DATA bug only, not a src/ bug — src/features.py behaved completely
-# correctly given what it was handed. Real production transactions from Razorpay's actual
+# correctly given what it was handed. Real production transactions from an actual
 # gateway would never carry this corruption; it's an artifact of this export process alone.
 #
 # Fix: overwrite the corrupted categorical columns with the TRUE raw values from

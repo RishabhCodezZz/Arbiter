@@ -7,7 +7,7 @@ LLM-as-classifier benchmark. Run from the repo root:
 THE QUESTION THIS ANSWERS: can a general-purpose LLM score fraud probability well enough,
 fast enough, cheaply enough to replace XGBoost? Per CLAUDE.md sec 6, the expected answer is
 no on all three axes — this script is what turns that expectation into a measured number,
-which is the actual evidence for the rubric's "where you chose not to use one" line. Per
+which is the actual evidence for the decision not to use an LLM for scoring. Per
 Per the project's G9 gate, BOTH outcomes are usable: if the LLM is surprisingly competitive, report that
 honestly and argue deployment on latency/cost grounds instead.
 

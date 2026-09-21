@@ -259,7 +259,7 @@ print(df[df.P_emaildomain.isin(top_email)]
 # ## Temporal split
 #
 # WHY WE CANNOT USE test_transaction.csv: it has no labels (that's what sample_submission.csv
-# is for). Kaggle keeps them hidden. Razorpay's required "held-out test set" must therefore be
+# is for). Kaggle keeps them hidden. The required "held-out test set" must therefore be
 # carved out of train_transaction.csv ourselves.
 #
 #   day 0 -------- 120 ---- 150 ---- 183
@@ -326,7 +326,7 @@ X_te, y_te = te[features], te["isFraud"]
 #    requires REAL probabilities, because expected_loss = P(fraud) x amount. If P isn't a
 #    genuine probability, every rupee figure we produce is wrong.
 #    We handle imbalance in the METRIC (PR-AUC) and fix the probabilities with isotonic
-#    calibration afterwards. This is a real fork in the road; note it for the panel.
+#    calibration afterwards. This is a real fork in the road; note it for the write-up.
 
 # %%
 model = xgb.XGBClassifier(
@@ -385,7 +385,7 @@ print(imp.to_string())
 # ## Record this run
 #
 # Paste the numbers into docs/experiments.md. Every subsequent notebook changes ONE thing
-# and we measure the delta. That ladder is the story we tell the panel.
+# and we measure the delta. That ladder is the story we tell.
 
 # %%
 print(f"""

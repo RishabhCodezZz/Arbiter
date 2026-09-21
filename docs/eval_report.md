@@ -74,7 +74,7 @@ honest exception list item #2). The headline claim remains overwhelmingly eviden
 if anything, *more* so than before, since essentially all of the reported value now comes
 from hard-verified outcomes.
 
-The simplified single-threshold (allow/block only) view used for the pitch-video visual has
+The simplified single-threshold (allow/block only) view used for the presentation visual has
 its minimum at **p = 0.589** for the ensemble (was p = 0.774 for the single model —
 [`cost_curve.png`](cost_curve.png) still shows the single-model version; regenerating it for
 the ensemble is a cosmetic follow-up, not done here), confirmed interior (not at an edge,
@@ -155,7 +155,7 @@ recount of individual transactions; §4 below has the exact recount for the real
 
 ## 4. False-positive cost, explicitly
 
-The rubric names this directly: *"honest metrics including false-positive cost."*
+Honest metrics report the cost of false positives, not just detection rates.
 
 **§3's ~215 is a single-threshold PROXY estimate**, derived from the aggregate PR curve at
 the simplified 2-way (allow/block only) view — see §3's own caveats. **Below is the EXACT
@@ -254,8 +254,7 @@ load-dependent — vs the LLM's ~6.7s median, so ~50–100x; the LLM is ~30x ove
 gateway budget, the ensemble stays under it). Most of that ~100ms is a one-row pandas
 DataFrame build plus the sklearn `predict_proba` wrapper; the gradient-boosted trees score
 in under a millisecond, so a production serving path (raw DMatrix, no pandas) would be much
-faster. This is the direct evidence for the rubric's "where you chose not to use
-one" line — benchmarked, not assumed. Full saga (a real cloud-API reliability failure,
+faster. This is the direct evidence for the decision not to use an LLM for scoring — benchmarked, not assumed. Full saga (a real cloud-API reliability failure,
 the pivot to self-hosting on Kaggle's GPU, both fixed and verified): `journal/`.
 
 Note: 0.5735 here is the single-XGBoost score on this 200-row *comparison* sample
@@ -364,8 +363,7 @@ signal. Caught and dropped before being reported as fact anywhere.
 
 ## Honest exception list
 
-What this system could not resolve, stated plainly because the rubric rewards it and a
-panel will find it anyway if it isn't. (This list has moved several times: down to 7 items
+What this system could not resolve, stated plainly because a reader will find it anyway if it isn't. (This list has moved several times: down to 7 items
 when the false-positive-cost estimate — previously item 5 — was resolved with an exact
 number in §4; up to 8 with the error-analysis variance finding; up to 9 with the
 segment-calibration confound; up to 10 with the ensemble-rebuild granular-recompute gap;
@@ -392,7 +390,7 @@ versions.)
    of them next that remains modeled, not the population itself.
 
 3. **Cost parameters are sourced assumptions, not certainties.** Chargeback fee (₹500) and
-   MDR (2.36%) are Razorpay's own disclosed pricing — closer to fact than assumption.
+   MDR (2.36%) are published payment-gateway pricing — closer to fact than assumption.
    Merchant margin (20%) and the LTV penalty (3x lost margin, the single most speculative
    number in the model) are genuinely uncertain, swept across a full sensitivity grid in
    `experiments.md` rather than reported as certain.
@@ -400,7 +398,7 @@ versions.)
 4. **US card-not-present data, not Indian UPI-heavy data.** IEEE-CIS is a US e-commerce
    dataset; the method (causal aggregation, cost-optimal three-way policy, SHAP + narrative
    layer) transfers directly, but the specific feature set and thresholds would need to be
-   re-derived against Razorpay's actual transaction mix.
+   re-derived against an actual transaction mix.
 
 5. **A handful of real audit-log records are legitimately probability-less.** During
    testing, the model artifact was deliberately made unavailable to prove the fail-closed
@@ -516,7 +514,7 @@ versions.)
     SHA-256 per record. The stronger record hash (item 11) makes casual/partial edits
     detectable, but someone who can also recompute the hash can still forge a record. A
     real payment system needs a keyed signature (HMAC or asymmetric), a hash chain, and
-    append-only external storage. Out of scope for a solo buildathon build; stated so it
+    append-only external storage. Out of scope for a solo build; stated so it
     isn't mistaken for production-grade integrity.
 
 13. **Causal correctness is now safe for one multi-threaded process, but not across

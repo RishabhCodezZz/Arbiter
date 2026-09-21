@@ -11,7 +11,7 @@ and CLAUDE.md §13 — this file is the trail of how they were reached.
 
 ## Decisions
 
-- Track locked: **02 — AI Risk Manager**. Considered all five; 03 (Revenue Recovery) scored higher in the abstract but 02 is the better fit for an ML-first solo builder and is the least crowded track.
+- Scope locked: card-fraud decisioning (a priced allow / step-up / block decision). Chosen as the best fit for an ML-first solo builder.
 - Framing locked: cost-optimal fraud **decision system** (allow / step-up / block), not a fraud classifier. Objective is expected rupee loss, not F1.
 - Dataset: IEEE-CIS Fraud Detection, temporal split on `TransactionDT`.
 - Scope committed: **A + B + C**, D (dispute drafting) as a stretch goal.
@@ -89,7 +89,7 @@ Escalated through 8 UID key configurations in total:
 
 **What changed as a result:** CLAUDE.md §4 scope table, `docs/experiments.md` verification table, and the project plan all updated to reflect A+B as the committed scope, D still stretch.
 
-**Why this belongs in the "what broke" answer:** it's a real target, a genuine multi-round attempt, an honest plateau, and a stop decision made from evidence within a budget set in advance — not a vague "we had some data issues." The discipline of the pre-committed threshold is itself worth stating explicitly in the panel writeup.
+**Why this is worth recording:** it's a real target, a genuine multi-round attempt, an honest plateau, and a stop decision made from evidence within a budget set in advance — not a vague "we had some data issues." The discipline of the pre-committed threshold is itself worth stating explicitly in the write-up.
 
 ---
 
@@ -164,13 +164,13 @@ Built the actual thesis: turned the calibrated probability into a decision, pric
 
 **Caught before running:** IEEE-CIS is a US dataset — `TransactionAmt` is dollar-scale. Feeding it directly against an Indian ₹500 chargeback fee would have made the fee absurdly large relative to typical transaction size, plausibly producing the exact degenerate-policy failure the pre-written G6 gate was worried about. Fixed with a currency conversion before any code ran, not discovered as a mystery afterward.
 
-**Caught mid-build, by actually checking:** rather than inventing a chargeback-fee-only cost model, checked Razorpay's own pricing page and found their real MDR — 2% + 18% GST, charged on every processed transaction, **not refunded on a later chargeback**. This closes a real gap the initial model missed (a fraud loss is bigger than "amount + dispute fee" — the processing fee Razorpay already kept is a third, separate loss). Added it correctly to all four calculation sites (both value functions, the standalone cost curve, and `realized_value`), verifying each one rather than assuming the change propagated cleanly.
+**Caught mid-build, by actually checking:** rather than inventing a chargeback-fee-only cost model, checked a typical Indian gateway's published pricing and found their real MDR — 2% + 18% GST, charged on every processed transaction, **not refunded on a later chargeback**. This closes a real gap the initial model missed (a fraud loss is bigger than "amount + dispute fee" — the processing fee the gateway already kept is a third, separate loss). Added it correctly to all four calculation sites (both value functions, the standalone cost curve, and `realized_value`), verifying each one rather than assuming the change propagated cleanly.
 
 **Caught after the first run, once a live rate was available:** used an unverified placeholder FX conversion (₹83/$1) for the first run. Corrected to a live dated quote (₹95.41/$1) once handed one. Didn't just accept the new numbers — predicted the *direction* of the effect first (the fixed ₹500 fee would become relatively smaller as amounts scale up, nudging the policy slightly more lenient), then verified the actual result matched: allow ticked from 95.7%→95.8%, block/step-up ticked down correspondingly. The prediction matching the outcome is a real, if small, sanity check that the model's economics behave the way they're supposed to, not just numbers moving for unexplained reasons.
 
 **Result — the headline of the entire project.** G6 gate passed (interior minimum at p=0.774, not at an edge). On the untouched test month: Arbiter values the batch at ₹17.22 crore, versus ₹15.68 crore doing nothing and ₹16.58 crore under the naive industry-default 0.5 threshold. **Lift: +₹1.54 crore vs no system, +₹64.3 lakh vs naive.**
 
-**A finding worth keeping visible, not burying:** 99.95% of that total value comes from allow/block outcomes computed directly from real fraud labels — hard, verifiable. Only 0.05% depends on the modeled step-up assumptions (`P_STOP`, `P_DROPOFF`). If a panelist doubts the step-up modeling, the honest answer is that it barely matters to the headline number — which is a stronger position than pretending high confidence in an assumption we can't actually verify from this dataset.
+**A finding worth keeping visible, not burying:** 99.95% of that total value comes from allow/block outcomes computed directly from real fraud labels — hard, verifiable. Only 0.05% depends on the modeled step-up assumptions (`P_STOP`, `P_DROPOFF`). If a reviewer doubts the step-up modeling, the honest answer is that it barely matters to the headline number — which is a stronger position than pretending high confidence in an assumption we can't actually verify from this dataset.
 
 **Left open, tracked, not hidden:** the sensitivity map shows how Arbiter's own value moves across margin/fee assumptions, but doesn't yet confirm the *lift over baselines* stays positive across that whole grid — only checked at the stated assumption point so far. Noted as a later follow-up rather than quietly ignored.
 
@@ -194,7 +194,7 @@ Per CLAUDE.md, the decision engine has to load a saved artifact and run on plain
 
 **What's genuinely still pending, and why:** the real model only exists inside the Kaggle session's memory — I have no GPU access, so I can't produce the actual trained artifact myself. Added a small addendum to the end of `notebooks/04_cost_model.py` that exports it (model, calibrator, feature manifest, and real held-out sample transactions) — that has to be run once in the live Kaggle session and the 4 files downloaded locally. Gate G7 is code-complete and locally proven correct against synthetic data; formally closes once the real artifacts are dropped in and `scripts/demo_engine.py` is run for real.
 
-**Why this belongs in the write-up:** "does it run, would you trust it" is a rubric line, not just a phrase — and the way to earn it isn't writing code that looks right, it's running it and finding out. Two real defects surfaced from a five-minute synthetic test that cost nothing and needed no GPU. That's the whole argument for testing before handing work off, made concrete rather than asserted.
+**Why this belongs in the write-up:** "does it run, would you trust it" is a real test, not just a phrase — and the way to earn it isn't writing code that looks right, it's running it and finding out. Two real defects surfaced from a five-minute synthetic test that cost nothing and needed no GPU. That's the whole argument for testing before handing work off, made concrete rather than asserted.
 
 ## Two severe bugs found chasing a small discrepancy — the most important catch of the project so far
 
@@ -206,7 +206,7 @@ Moved dependency installs into a proper project venv (global Python had real, un
 
 **Bug 2 — the sample transaction data itself was corrupted, found while diagnosing Bug 1.** Every categorical feature (`ProductCD`, `card4`, `card6`, both email domains) was scoring as `-1` — "unknown category" — simultaneously, for a transaction where these are normally populated. Traced to the root: `te`'s categorical columns get overwritten with integer codes early in the notebook (needed for training) — the exact same mutation that forced a targeted fresh-CSV reload for recovering `cat_mappings` a few cells earlier. The sample-transaction export pulled raw values from `te` too, so it was exporting *already-encoded integers* (`ProductCD=0.0`) labeled as if they were the true raw category (`"W"`). `str(0.0)` never matches a manifest key like `"W"` — every category silently fell through to -1.
 
-**Important distinction, worth being precise about:** this is a test-data bug, not a `src/` bug. `src/features.py` behaved completely correctly given corrupted input — real production transactions from Razorpay's actual gateway would never carry this corruption, since it's an artifact of this specific export process, not of the serving code's logic.
+**Important distinction, worth being precise about:** this is a test-data bug, not a `src/` bug. `src/features.py` behaved completely correctly given corrupted input — real production transactions from an actual gateway would never carry this corruption, since it's an artifact of this specific export process, not of the serving code's logic.
 
 **Fixed by reusing infrastructure already built for the first mutation-related bug:** `narrow_raw` (read fresh from the original CSVs, before the encoding loop ever touched it, already built for the `cat_mappings` recovery) now overwrites the sample export's corrupted categorical columns with the true raw values, matched by `TransactionID`. Verified the merge logic directly with a standalone test before trusting it — same discipline as the earlier `to_dict()` fix, where the first attempt looked right and wasn't.
 
@@ -349,7 +349,7 @@ On this 200-row sample (10 fraud cases, ~5% base rate → random PR-AUC ≈ 0.05
 
 **Worth stating precisely for the eventual report:** 0.5735 is XGBoost's score on this specific 200-row comparison sample, not the headline 0.5514 reported from the full held-out test month (notebooks/04) — different sample sizes, expected to differ, and the full-month number remains the official reported XGBoost metric. This 200-row number exists specifically to be a fair, identical-data comparison against the LLM, nothing more.
 
-**What the whole LLM-benchmark saga actually was, honestly:** a working cloud API → a hidden process leak → a rate-limit spiral that survived a real backoff fix → an abandoned approach → a full pivot to Kaggle's GPU → a missing system package → a client timeout that killed a load mid-warmup → then, finally, a clean result. Every step was a real, logged, verified fix, not a guess — this is dense, genuine "what broke and how you got out" material, arguably the single best entry in the whole journal for that exact form field.
+**What the whole LLM-benchmark saga actually was, honestly:** a working cloud API → a hidden process leak → a rate-limit spiral that survived a real backoff fix → an abandoned approach → a full pivot to Kaggle's GPU → a missing system package → a client timeout that killed a load mid-warmup → then, finally, a clean result. Every step was a real, logged, verified fix, not a guess — this is dense, genuine failure-and-recovery material, arguably the single best entry in the whole journal.
 
 ## Component B built — the Kaggle-legal leaky model
 
@@ -405,11 +405,11 @@ Checked before writing a single word of setup instructions: no `.git`, no `.giti
 
 ## A real scoping question on CLAUDE.md — resolved, not just complied with
 
-The question came up of whether CLAUDE.md should be gitignored as "personal." Reasoning against it: this file is the actual evidence trail for "problem taste" and "AI judgment" — hiding it removes proof the reasoning was real and grounded, not reconstructed for the submission. Landed on a middle ground: kept it fully public, trimmed the genuinely personal/administrative content specifically, rather than either extreme.
+The question came up of whether CLAUDE.md should be gitignored as "personal." Reasoning against it: this file is the actual evidence trail for the project's reasoning — hiding it removes proof the reasoning was real and grounded, not reconstructed afterwards. Landed on a middle ground: kept it fully public, trimmed the genuinely personal/administrative content specifically, rather than either extreme.
 
 ## Building the README — three structures considered, one chosen with a reason
 
-Weighed narrative-first (risks G10 — "does it run" buried under story), setup-first/generic-OSS (risks burying the actual judgment signal under boilerplate), and a dual-track hub (tight pitch + immediate copy-paste quickstart, then a deep-dive that links to docs that already exist instead of duplicating them). Chose the hub — it's the only one that serves a skimming panelist and someone actually trying to clone-and-run at once, and it matches this project's own already-established hub-and-spoke doc pattern (CLAUDE.md/experiments.md/journal) instead of fighting it.
+Weighed narrative-first (risks G10 — "does it run" buried under story), setup-first/generic-OSS (risks burying the actual judgment signal under boilerplate), and a dual-track hub (tight summary + immediate copy-paste quickstart, then a deep-dive that links to docs that already exist instead of duplicating them). Chose the hub — it's the only one that serves a skimming reader and someone actually trying to clone-and-run at once, and it matches this project's own already-established hub-and-spoke doc pattern (CLAUDE.md/experiments.md/journal) instead of fighting it.
 
 ## Tried a real clean-clone test, hit sandbox-specific issues, deferred it to a real machine
 
@@ -431,7 +431,7 @@ Two full design-system prompts (a "Luxury/Editorial" one and a "Bold Typography"
 
 ## Built two artifacts — a narrative docket, then (after a real scope correction) a dashboard replacement
 
-First built "Arbiter Docket" — a full narrative story site (cover, journal walkthrough, scoreboard, cost model, differentiators, a stylized transcript of real exchanges from this build) for screen-recording the pitch narration over. Published, then the direction was clarified: not what's needed for presenting — instead, replace the Streamlit dashboard itself with a proper website using the same design language, populated with real images and numbers.
+First built "Arbiter Docket" — a full narrative story site (cover, journal walkthrough, scoreboard, cost model, differentiators, a stylized transcript of real exchanges from this build) for narrated walkthroughs. Published, then the direction was clarified: not what's needed for presenting — instead, replace the Streamlit dashboard itself with a proper website using the same design language, populated with real images and numbers.
 
 **Asked two clarifying questions before rebuilding, rather than guessing on a second big creative build:** how should the Review Queue/Audit Log panels handle the fact that a static page can't run Python (real snapshot, honestly labeled, chosen over exploring live backend capability), and should this replace `dashboard.py` or sit alongside it (fully replace, chosen).
 
@@ -453,7 +453,7 @@ A thorough re-check was called for, not a repeat of the earlier spot-check. Went
 
 ## Corrected a real dependency mistake: moved both pages off Claude's artifact hosting entirely
 
-A fair question came up — why were changes happening "in the artifact," and could a real website be built instead? A real miss: the Control Room and Docket were published via Claude's Artifact tool, which hosts them at a `claude.ai` URL tied to this account, private by default but requiring an explicit share action for anyone else to see. For a hackathon submission where the repo itself is what gets judged, that's an unnecessary external dependency — a judge shouldn't need access to anyone's Claude account to see the dashboard.
+A fair question came up — why were changes happening "in the artifact," and could a real website be built instead? A real miss: the Control Room and Docket were published via Claude's Artifact tool, which hosts them at a `claude.ai` URL tied to this account, private by default but requiring an explicit share action for anyone else to see. For a public project where the repo itself is what gets reviewed, that's an unnecessary external dependency — a reviewer shouldn't need access to anyone's Claude account to see the dashboard.
 
 Both pages were already fully self-contained (every dependency inlined, only Google Fonts called externally) specifically so they *could* stand alone — the artifact hosting was a publishing convenience, not a structural requirement. Copied both real files directly into the repo: `dashboard.html` at the root (replacing the artifact link as the actual deliverable) and `docs/docket.html`. Re-verified both render and execute correctly from their real repo locations, not just assumed the copy would behave identically — confirmed via the same JS-driven checks as the artifact version (real slider values, real review-queue count, clean console). Updated every doc that pointed at the `claude.ai/code/artifact/...` URLs (README, `artifacts/README.md`, `docs/architecture.md`) to reference the local files instead. Confirmed explicitly: the artifact link was never shared with anyone — publishing to it defaults private, and no share action was ever taken.
 
@@ -558,7 +558,7 @@ Did a full sweep of every "live"-labeled section of the project docs rather than
 
 3. **`CLAUDE.md`'s open-questions list** had "Kaggle account + competition rules accepted" sitting unchecked, directly contradicting the plan's own resolved-blockers entry, which says this was accepted early on. Two places disagreeing about the same fact.
 
-4. **The plan's submission checklist** had "Repo public" checked — true when it was written, but the repo's visibility had changed since. Not exactly a "bug," but worth a note so the checkbox doesn't get trusted at face value later.
+4. **The checklist** had "Repo public" checked — true when it was written, but the repo's visibility had changed since. Not exactly a "bug," but worth a note so the checkbox doesn't get trusted at face value later.
 
 **Why this is worth its own entry:** none of these were subtle. They were caught by the simple, repeatable act of grepping for words like "remaining," "unresolved," and "open" and actually reading what came back, rather than trusting a status board that looked complete. Same category of finding as the "11 vs 13" hunt and the "§5" cross-reference bug — a live document that stops being read carefully stops being live, no matter how good the ✅ marks look.
 
@@ -663,7 +663,7 @@ retuning cycle. Knowing when *not* to chase a number is itself the judgment this
 exercise was for.
 
 **Wired into `docs/eval_report.md` (new §8), `docs/experiments.md` (new section), and
-`CLAUDE.md` (the build-history section + two new panel Q&As in §10).** The honest exception list moved for a second time in this project — 8
+`CLAUDE.md` (the build-history section + two new design Q&As in §10).** The honest exception list moved for a second time in this project — 8
 items → 7 when the false-positive estimate closed, now back to 8 with this genuinely new
 item — every "N items"/"N-item" reference re-grepped and fixed across all four files before
 calling this done, same discipline as the first time this exact count moved.
@@ -859,7 +859,7 @@ signal that the ML track is actually done, not under-explored — model ships as
 ## Ensemble diagnostic — the one genuinely open lever, written and queued
 
 The question of ensembling (multiple model types averaged together) came up directly — to
-improve accuracy and reduce false positives, after the "judged like a real evaluator, 7.5/10"
+improve accuracy and reduce false positives, after the honest 7.5/10 self-review
 assessment. Worth being precise about which of the three things they wanted to chase
 (accuracy, false positives, bias/variance) actually still had headroom:
 
@@ -1402,12 +1402,12 @@ result rather than "today's headline". Chose not to rewrite those in place -- do
 blindly risked breaking historically-accurate statements. Instead: added clearly-labeled
 callout notes (CLAUDE.md Sec 6, docs/eval_report.md Sec 1) pointing to the real, confirmed
 ensemble numbers, updated the model-comparison table row and README's headline table with
-the actual bootstrapped figures, added a new panel Q&A, a new Sec 13 status row, and a new
+the actual bootstrapped figures, added a new design Q&A, a new Sec 13 status row, and a new
 honest exception-list item (10) naming exactly what's NOT yet regenerated for the ensemble
 (the granular per-transaction breakdown, dashboard.html, scripts/robustness_checks.py) --
 tracked explicitly, not silently left inconsistent. Checked docs/architecture.md and
-SUBMISSION.md too (grepped, not assumed clean) -- architecture.md had two stale
-single-model lines (the version-guard description), fixed; SUBMISSION.md had no
+the summary docs too (grepped, not assumed clean) -- architecture.md had two stale
+single-model lines (the version-guard description), fixed; the summary doc had no
 number-level claims to update.
 
 **One self-correction caught while writing the architecture.md fix**: first wrote that the
@@ -1517,7 +1517,7 @@ overwritten) and item 10 (narrowed from "nothing done" to "the one specific piec
 done", updated twice across this session as the real state changed).
 
 Updated CLAUDE.md's SS6 callout, README.md's headline table AND its "Results" table AND its
-exception-list summary line, SUBMISSION.md's panel-ready paragraph, and docs/docket.html's
+exception-list summary line, the write-up paragraph, and docs/docket.html's
 two headline-reveal sections (the top ledger-strip and "EXHIBIT 04 -- THE VERDICT") --
 deliberately left docket.html's and eval_report.md's HISTORICAL stage-specific numbers
 (the V0-V5 ladder, the calibration-method comparison, the training-dev decomposition, the
@@ -1574,7 +1574,7 @@ false ("dashboard.html still shows the single-model's numbers" — it doesn't), 
 tables, the policy-mix line, a leftover "the decision to ship the 3-model ensemble"
 that contradicts the actual 2-model ship); `docs/docket.html` (the Exhibit-02 COST MODEL
 entry styled and chipped as a live headline showing ₹17.22cr, next to the cover's
-₹1.678cr). README / SUBMISSION / eval_report §1–4 / architecture / dashboard were genuinely
+₹1.678cr). README / eval_report §1–4 / architecture / dashboard were genuinely
 done — the earlier claim over-generalised from those.
 
 What this pass did (approach chosen deliberately over a blind find-replace):
@@ -1649,8 +1649,7 @@ and a `test_engine_survives_a_malformed_manifest`.
   already had full system-font fallback stacks, so the visual degrades gracefully and
   "self-contained / works offline" is now literally true (was a real overstatement).
 
-**Disclosed, deliberately not fixed** (production-grade, out of scope for a solo buildathon
-build) — added to `docs/eval_report.md`'s exception list as items 12–14:
+**Disclosed, deliberately not fixed** (production-grade, out of scope for a solobuild) — added to `docs/eval_report.md`'s exception list as items 12–14:
 keyed/chained audit signatures + immutable external storage; a concurrency-safe,
 event-time-ordered feature store (the JSON file is single-process only); and a versioned
 artifact release with checksums + committed golden feature vectors to guard the
@@ -1700,7 +1699,7 @@ opposite of fail-closed.
   missing one silently turned that column's inputs into the `-1` "unseen" sentinel instead
   of failing closed.
 - `dashboard.html` now carries a visible "single-model snapshot (pre-ensemble)" banner on
-  the Review Queue and Audit Log tabs, so a judge looking only at the dashboard sees the
+  the Review Queue and Audit Log tabs, so a reviewer looking only at the dashboard sees the
   distinction that was previously only in `eval_report.md` exception item 10.
 - Confirmed still correctly disclosed (not "fixed" — genuinely out of scope): unkeyed
   audit hashes, single-process JSON history store, manual artifact export.
@@ -1767,10 +1766,10 @@ forward-compatible with a proper release manifest without a Kaggle re-run.
 `tests/test_model.py::test_artifact_checksum_mismatch_fails_closed`.
 
 **Also fixed this pass — an unmeasured claim, not a code bug.** Every doc said the model
-scores "in microseconds" and beat the LLM by "~6 orders of magnitude on latency." Filling a
-form field I went to cite the exact number and found it had *never been measured* — it was
+scores "in microseconds" and beat the LLM by "~6 orders of magnitude on latency." Writing up
+the results I went to cite the exact number and found it had *never been measured* — it was
 an assumption written down early (journal entry near the first LLM call) and copied forward
-into `eval_report §7`, `README`, `CLAUDE`, `SUBMISSION`, `docket`, same shape as the
+into `eval_report §7`, `README`, `CLAUDE`, `docket`, same shape as the
 "11 vs 13" stale-count bug. Timed it properly with `time.perf_counter` over the real
 held-out sample: the ensemble's end-to-end `score()` is **roughly ~100ms per transaction on
 plain CPU** (measured 65–135ms across runs, load-dependent), most of it a one-row pandas

@@ -71,7 +71,7 @@ class CoarseStats:
 
 class ClientHistoryStore:
     """File-backed, loaded fully into memory (this dataset's client count is small enough
-    that this is fine for a hackathon demo — a production version would swap this class
+    that this is fine for a demo — a production version would swap this class
     for a real feature-store client without touching features.py or engine.py, since they
     only depend on this class's get/update interface, not its storage mechanism)."""
 

@@ -145,7 +145,7 @@ def report(name, y_true, y_prob):
 # highly correlated (>0.95) with a column we've already kept from that same group. This is
 # simpler and more transparent than fitting PCA per group (which would also need careful
 # train-only fitting to avoid leaking test distribution into the components) — a plain
-# "drop near-duplicates" pass is easier to defend in a panel room than an opaque PCA
+# "drop near-duplicates" pass is easier to defend in a review than an opaque PCA
 # transform, for a comparable reduction in redundancy.
 #
 # WHY HASH THE RAW BYTES, NOT A PYTHON TUPLE: hashing ~414k booleans as a Python tuple 339
@@ -404,7 +404,7 @@ ax.legend()
 plt.tight_layout()
 plt.savefig("reliability_diagram.png", dpi=120)
 plt.show()
-print("saved: reliability_diagram.png — download this, it's going in the pitch video")
+print("saved: reliability_diagram.png — download this, it's going in the presentation")
 
 # %% [markdown]
 # ## Record this run

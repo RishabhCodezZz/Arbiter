@@ -6,12 +6,12 @@ the notebook runs on Kaggle and this runs locally — consolidating this once bo
 environments can share one source file is a tracked follow-up.
 
 Every number is sourced — see notebooks/04_cost_model.py's markdown for citations
-(Razorpay's own chargeback-fee range and MDR, 3D Secure studies, checkout-friction studies).
+(a typical Indian gateway's published chargeback-fee range and MDR, 3D Secure studies, checkout-friction studies).
 """
 import math
 
 CHARGEBACK_FEE = 500.0
-MDR_RATE = 0.02 * 1.18  # Razorpay's disclosed 2% platform fee + 18% GST
+MDR_RATE = 0.02 * 1.18  # a typical gateway's published 2% platform fee + 18% GST
 MARGIN = 0.20
 P_STOP = 0.60
 P_DROPOFF = 0.15

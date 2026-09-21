@@ -38,7 +38,7 @@ Same test month as every other model in this project. Same hyperparameters as V1
 ## Ladder rationale
 
 The point is not the final number. It is that each decision has a measured price tag, so
-every claim in the pitch is backed by a delta rather than an assertion.
+every claim in the write-up is backed by a delta rather than an assertion.
 
 Two rows are expected to look "bad" and are load-bearing anyway:
 
@@ -149,7 +149,7 @@ Platt matches raw *exactly* on both ranking metrics (proves the ties theory) and
 
 **Policy mix on the test month (92,427 transactions), single-XGBoost run:** allow 95.8% (88,560) · step-up 2.7% (2,519) · block 1.5% (1,348). *(Shipped ensemble: allow 95.6% (88,331) · step-up 3.0% (2,782) · block 1.4% (1,314).)*
 
-**Result — measured on the untouched test month, real Razorpay MDR + real dated FX rate:**
+**Result — measured on the untouched test month, real gateway MDR + real dated FX rate:**
 
 | Policy | Total value | Lift vs this |
 |---|---|---|
@@ -162,7 +162,7 @@ Platt matches raw *exactly* on both ranking metrics (proves the ties theory) and
 
 ### FX rate correction — a real, caught, fixed number
 
-First run used `USD_TO_INR = 83.0`, a rough placeholder picked from general knowledge, not checked. Corrected to `95.41` (a live, dated Google/Morningstar quote) once a real dated source was available — same bar the Razorpay MDR number was already held to.
+First run used `USD_TO_INR = 83.0`, a rough placeholder picked from general knowledge, not checked. Corrected to `95.41` (a live, dated Google/Morningstar quote) once a real dated source was available — same bar the gateway MDR number was already held to.
 
 This wasn't cosmetic: `CHARGEBACK_FEE` (₹500) is fixed, not amount-proportional, so a rate change shifts its *relative* weight against transaction size. Verified the effect matched the predicted mechanism — policy shifted marginally more lenient (allow 95.7%→95.8%) as the fixed fee became relatively smaller — before accepting the corrected numbers above.
 
@@ -189,13 +189,13 @@ vs no system / +₹66.77L vs naive. The table below is the single-XGBoost run an
 
 ## Cost model parameters — FINAL
 
-These are assumptions, not facts, and the panel will ask where they came from. Full
+These are assumptions, not facts, and a reviewer will ask where they came from. Full
 citations: `CLAUDE.md` §6.
 
 | Parameter | Value | Source / justification |
 |---|---|---|
-| Chargeback fee | ₹500 | Razorpay's own disclosed dispute-fee range ₹200–600, midpoint |
-| Payment processing fee (MDR) | 2.36% | Razorpay's own pricing page: 2% platform fee + 18% GST, not refunded on a later chargeback |
+| Chargeback fee | ₹500 | a typical Indian gateway's published dispute-fee range ₹200–600, midpoint |
+| Payment processing fee (MDR) | 2.36% | a typical Indian gateway's published pricing: 2% platform fee + 18% GST, not refunded on a later chargeback |
 | Merchant margin | 20% | Blended e-commerce assumption — swept in sensitivity below |
 | Step-up stops fraud | 60% | 3D Secure fraud-reduction studies cite 40–70%, midpoint |
 | Step-up drop-off rate | 15% | Checkout-friction studies cite 17–21% for full checkout; a single OTP is less friction, set conservatively lower |

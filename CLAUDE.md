@@ -1,65 +1,42 @@
-# CLAUDE.md — Razorpay AI Buildathon 2026
+# CLAUDE.md — Arbiter
 
 > Living document. Updated every time a decision is made, reversed, or a fact is learned. v0.6.
 >
 > **Companion documents:**
 > - **[docs/experiments.md](docs/experiments.md)** — the measured ladder, V0 → V5.
-> - **`journal/`** — failure log, written as things happened. Feeds the form field they read first.
+> - **`journal/`** — failure log, written as things happened.
 >
-> This file is *context and rationale*: why this track, why this data, what the rubric wants.
+> This file is *context and rationale*: why this scope, why this data, the design decisions.
 
 ---
 
-## 1. The situation
+## 1. Overview
 
-**Razorpay AI Buildathon 2026** — a student-only hiring funnel, not a prize hackathon.
+**Arbiter** is a fraud decision system: it turns a calibrated fraud probability into an allow / step-up / block decision priced in rupees. It is a solo project.
 
 | | |
 |---|---|
 | **Builder** | Solo build. |
-| **Process** | No resume screen, no aptitude test, no GD. Shortlist goes straight to a panel that interrogates the build. |
-
-The application **is** the submission — the form asks for the repo, the video and the writeup. There is no separate later build deadline.
-
-### What the form asks
-
-Besides standard personal/admin fields (not tracked here), the build side asks: track · project name · what it solves · **public GitHub repo URL** · **5-min pitch video** (unlisted ok) · **"what broke, and how you got out"**.
-
-> Razorpay's own note on the form: *"The last one is the one we read first."*
+| **Goal** | A fraud decision system a merchant could actually deploy, evaluated in rupees on a held-out test set. |
 
 ---
 
-## 2. The rubric (verbatim from the site)
+## 2. Design principles
 
-| Line | What they say |
-|---|---|
-| **Problem taste** | did you pick something that actually matters |
-| **Build quality** | does it run, is it structured, would you trust it |
-| **AI judgment** | the right tool in the right place, **and where you chose not to use one** |
-| **Failure recovery** | what broke, and what you did about it |
-
-### Non-negotiables
-
-1. **It must actually run.** A recorded mock is a fail.
+1. **It must actually run.** A recorded mock is not evidence.
 2. **Measured outcomes on a batch.** Never one cherry-picked success.
 3. **An audit trail** for every consequential decision.
 4. **At least one failure handled gracefully**, by design, not by patch.
-5. **Honest exception list** — publish what the system could *not* resolve.
-6. **A defensible "where we chose not to use AI."** Most submissions will have no answer here.
+5. **Honest exception list** — document what the system could *not* resolve.
+6. **A defensible "where we chose not to use AI."**
 
 ---
 
-## 3. Track: **02 — AI Risk Manager**
+## 3. Scope: card fraud, defense-only
 
-> *"Build a working detector, verifier or auto-responder for one class of loss, with measured precision and recall on a held-out test set."*
-> *The bar: "Honest metrics including false-positive cost. Strictly defense-only: anything offense-capable is disqualified."*
-> *Example directions listed on the card: chargeback evidence responder, return-risk scorer, fraud-spike detector, abuse-ring sentinel.*
+A working detector / decision layer for one class of loss (card-not-present fraud and chargebacks), with measured precision and recall on a held-out test set and honest metrics including false-positive cost. Strictly defense-only: nothing offense-capable.
 
-**On the four example directions:** Arbiter is deliberately none of them individually — it's the decision layer underneath all four, the piece that turns any of their outputs into a priced allow/step-up/block call. The closest overlap is the evidence responder, which is Component D, cut early as a stretch goal (see §4) so the decision engine, audit trail, and causal-honesty evidence stayed the priority.
-
-**Track scores for the record:** 03 Revenue Recovery 9.0 · **02 Risk Manager 8.5** · 01 Agentic Commerce 8.0 (highest relevance, worst crowding) · 04 Finance Controller 7.5 (safest, but AI risks reading as bolt-on) · 05 Open 6.0.
-
-02 chosen because it is the right track *for this builder*: ML is the only self-declared strength, the builder wants the "defend your model" panel conversation, has genuine interest in fraud patterns, and Razorpay signals 02 is under-subscribed — *"surfaces the risk and ML minded builders the others miss."*
+**Related directions:** a chargeback evidence responder, a return-risk scorer, a fraud-spike detector and an abuse-ring sentinel are all neighbouring problems. Arbiter is deliberately none of them individually — it is the decision layer underneath all four, the piece that turns any of their outputs into a priced allow/step-up/block call. The closest overlap is the evidence responder, which is Component D, cut early as a stretch goal (see §4) so the decision engine, audit trail, and causal-honesty evidence stayed the priority.
 
 ---
 
@@ -74,7 +51,7 @@ Besides standard personal/admin fields (not tracked here), the build side asks: 
 | **A — Cost-optimal decision engine** | Calibrated probability → cost curve → allow / step-up / block | 9/10 | active |
 | **B — Causal-vs-Kaggle leakage study** | Build both models, quantify the gap | 10/10 as a component | active |
 | **C — Card-level risk state** | Score cards not transactions; report time-to-detection | 8.5/10 | **cut early — see §5** |
-| **D — Dispute evidence drafting** *(stretch)* | Razorpay Disputes API, test mode | 8/10 as a bolt-on | stretch |
+| **D — Dispute evidence drafting** *(stretch)* | A payment gateway's Disputes API, test mode | 8/10 as a bolt-on | stretch |
 
 **Why C was cut:** required near-perfect client identity resolution (target: 96.9/2.9/0.2 pure-0/pure-1/mixed). Eight key configurations tested, best achieved was 2.11% mixed — ~11x the target, plateaued. Full investigation in §5 and `docs/experiments.md`. A scoping decision made from evidence within a pre-committed time budget, not an unexamined failure — good "what broke, how we got out" material.
 
@@ -88,11 +65,11 @@ Besides standard personal/admin fields (not tracked here), the build side asks: 
 
 ~590k rows, ~394 features + identity table, ~3.5% fraud. 1.35 GB.
 
-**Why a public dataset at all:** the track bar demands "measured precision and recall on a held-out test set", which requires trustworthy labels. Self-generated synthetic fraud means writing both the exam and the answer key — a risk panel spots it instantly and it invalidates every downstream number.
+**Why a public dataset at all:** a measured precision and recall on a held-out test set requires trustworthy labels. Self-generated synthetic fraud means writing both the exam and the answer key — any reviewer spots it instantly and it invalidates every downstream number.
 
 **Why IEEE-CIS over ULB `creditcard.csv`:** ULB's features are anonymised PCA components (`V1`–`V28`) — unexplainable, so no SHAP narrative and no justification for the LLM layer. IEEE-CIS has real semantics (card, email domain, device, addr), so explanations are true statements about the world.
 
-**Stated limitation (say it before they ask):** IEEE-CIS is US card-not-present e-commerce fraud. Razorpay's real mix is UPI-heavy and Indian. The *method* transfers; the specific features would change.
+**Stated limitation (say it before they ask):** IEEE-CIS is US card-not-present e-commerce fraud. Real Indian payment mixes are UPI-heavy. The *method* transfers; the specific features would change.
 
 ### The label is card-level, not transaction-level — this drives everything
 
@@ -194,7 +171,7 @@ Precision/recall/F1 are not the objective. **Expected rupee value** is — compu
 
 **Built and run, `notebooks/04_cost_model.py`. G6 gate PASSED. The numbers immediately below are the single-XGBoost cost-model run** — the shipped headline is the 2-model ensemble (see the callout above and `docs/eval_report.md` §1–§4); the reasoning, cost mechanism and parameter sourcing in the rest of this section are model-independent and unchanged.
 
-**Result (single-XGBoost run), on the untouched test month (92,427 transactions), with Razorpay's real MDR and a real dated FX rate:**
+**Result (single-XGBoost run), on the untouched test month (92,427 transactions), with a real gateway MDR and a real dated FX rate:**
 
 | Policy | Total value (single XGBoost) | Total value (shipped 2-model ensemble) |
 |---|---|---|
@@ -212,8 +189,8 @@ Precision/recall/F1 are not the objective. **Expected rupee value** is — compu
 
 | Parameter | Value | Source |
 |---|---|---|
-| Chargeback fee | ₹500 | Razorpay's own disclosed dispute-fee range ₹200–600, midpoint |
-| **Payment processing fee (MDR)** | **2.36%** | **Razorpay's own pricing page** — 2% platform fee + 18% GST, uniform across all domestic methods, not refunded on a later chargeback. Found by checking the actual host platform's site, added after the initial model — a real, separate loss the chargeback-fee number alone doesn't capture. |
+| Chargeback fee | ₹500 | a typical Indian gateway's published dispute-fee range ₹200–600, midpoint |
+| **Payment processing fee (MDR)** | **2.36%** | **a typical Indian gateway's published pricing** — 2% platform fee + 18% GST, uniform across all domestic methods, not refunded on a later chargeback. Found by checking an actual gateway pricing page, added after the initial model — a real, separate loss the chargeback-fee number alone doesn't capture. |
 | Merchant margin | 20% | Blended e-commerce assumption — swept in sensitivity |
 | Step-up stops fraud | 60% | 3D Secure studies cite 40–70%, midpoint |
 | Genuine customer drop-off at step-up | 15% | Checkout-friction studies cite 17–21% for full checkout; a single OTP is less friction, set lower |
@@ -221,7 +198,7 @@ Precision/recall/F1 are not the objective. **Expected rupee value** is — compu
 
 **A bug caught before it ran, not after:** IEEE-CIS is a US dataset — `TransactionAmt` is dollar-scale. Feeding it directly against an Indian ₹500 chargeback fee would make the fee absurdly large relative to typical transaction size and likely produce a degenerate policy (block everything) — plausibly the exact mechanism the pre-written G6 gate ("does the cost curve have an interior minimum") was worried about. Fixed with an illustrative ₹83/$1 conversion before any code ran, stated as a modeling simplification, not hidden.
 
-**Why per-transaction, not a single global threshold:** every cost term scales with `amount`, so the cost-optimal action genuinely depends on transaction size, not just fraud probability. The notebook computes the expected value of **all three actions for every transaction** and picks the best one — the correct decision given the cost model, not an approximation of it. A simpler single-threshold (allow/block only) sweep is also built, purely as the intuitive cost-curve visual for the pitch video, and doubles as the G6 gate check (does the minimum land inside the range, not at an edge — checked explicitly, not assumed).
+**Why per-transaction, not a single global threshold:** every cost term scales with `amount`, so the cost-optimal action genuinely depends on transaction size, not just fraud probability. The notebook computes the expected value of **all three actions for every transaction** and picks the best one — the correct decision given the cost model, not an approximation of it. A simpler single-threshold (allow/block only) sweep is also built, purely as the intuitive cost-curve visual for presentations, and doubles as the G6 gate check (does the minimum land inside the range, not at an edge — checked explicitly, not assumed).
 
 **MDR applies only where a transaction actually processes:** every allow, and a step-up that completes (genuine finishes, or fraud gets through anyway) — never a block, never a step-up abandonment, because nothing was processed.
 
@@ -319,7 +296,7 @@ Same model. The second is what the merchant experiences. **Precision contains no
 
 **Baselines differ and this trips everyone up:** a random model scores ROC-AUC **0.5** always, but PR-AUC **= the base rate (~0.035)**. So PR-AUC 0.50 is ~14× random here, not "a coin flip". The two numbers are not on the same scale.
 
-**We report both** because Kaggle scored this competition on ROC-AUC (winners: 0.9408 private LB) so it gives context, and because reporting only the flattering metric is exactly what the rubric penalises.
+**We report both** because Kaggle scored this competition on ROC-AUC (winners: 0.9408 private LB) so it gives context, and because reporting only the flattering metric is exactly how a report loses trust.
 
 ### The list
 
@@ -334,9 +311,9 @@ Same model. The second is what the merchant experiences. **Precision contains no
 
 ---
 
-## 10. Questions the panel will ask, and our answers
+## 10. Questions a reviewer will ask, and our answers
 
-**Q: Why this dataset? Razorpay didn't specify one.**
+**Q: Why this dataset?**
 The bar requires measured precision/recall on a held-out test set → requires trustworthy labels. Three options: real merchant data (impossible, PII), self-generated synthetic (writing the exam *and* the answer key — invalidates every number), or a real public labelled set. Only the third survives. Among those, IEEE-CIS over ULB because ULB's PCA features are unexplainable and would make the SHAP/LLM layer impossible.
 
 **Q: Isn't this just a Kaggle notebook?**
@@ -346,7 +323,7 @@ No — the Kaggle objective is ROC-AUC on a static file with future information 
 Because nobody chose 0.5; it's a default. There isn't even a single threshold — every cost term scales with transaction amount, so the cost-optimal action genuinely depends on amount, not just probability. We compute the expected value of allow/step-up/block per transaction and pick the best one; the simple single-threshold view we do show (for the intuitive cost-curve visual) comes from the minimum of that curve, and moves when the merchant's economics move.
 
 **Q: How did you price the outcomes — where did ₹500 and 2.36% come from?**
-₹500 is Razorpay's own disclosed chargeback dispute-fee range (₹200–600), midpoint. 2.36% is Razorpay's own disclosed processing fee (2% + 18% GST) — found by checking their actual pricing page, not assumed, and modeled correctly as non-refundable on a later chargeback. Margin and the LTV penalty are the genuinely uncertain ones; both are swept in a sensitivity analysis rather than reported as if certain.
+₹500 is a typical Indian gateway's published chargeback dispute-fee range (₹200–600), midpoint. 2.36% is a typical Indian gateway's published processing fee (2% + 18% GST) — found by checking an actual gateway pricing page, not assumed, and modeled correctly as non-refundable on a later chargeback. Margin and the LTV penalty are the genuinely uncertain ones; both are swept in a sensitivity analysis rather than reported as if certain.
 
 **Q: Why isn't the LLM doing the scoring?**
 Benchmarked it; it loses to GBDT on accuracy, latency and cost. Evidence is in the repo. The LLM renders explanations, it never decides.
@@ -369,7 +346,7 @@ That was the plan (component C). We tried to reproduce the 1st place team's clie
 **Q: You said latency/deployability was why you shipped one model — why does it now ship two?**
 Because we tested it, the same way we test everything else here. LightGBM, trained untuned on the exact same features, turned out to be genuinely better at resisting the temporal-mismatch degradation that dominates this problem — smallest val→test drop of any model tried. Averaging it with the shipped XGBoost produced a statistically confirmed real rupee lift (bootstrap 95% CI [+₹6.55L, +₹21.24L] on the test month), not just a better-looking metric — we specifically checked it survives contact with the real cost policy, because a related earlier experiment (segment calibration) proved a metric win doesn't always mean a value win. We also tried a 3rd model (CatBoost) and further tuning of LightGBM itself — both tested, both not adopted (CatBoost's edge over 2 models wasn't statistically distinguishable from zero; tuning LightGBM made it *worse*, confirming the same val-mismatch risk a third time on a second model family). Two models, not one, and not three — each a tested decision, not a default.
 
-**Q: This is US card data — Razorpay is UPI-heavy.**
+**Q: This is US card data — Indian payments are UPI-heavy.**
 Correct, and stated up front. The method is rail-agnostic; the features would change.
 
 ---
@@ -409,7 +386,7 @@ Every one of these is **material for the field they read first.** A build with n
 4. ~~C — time-to-detection~~ *(already cut — see §4)*
 5. **B — Kaggle-legal comparison** ← protect this, it is the differentiator
 
-**Never cut:** the model ladder · the cost curve · the three-way policy · the audit trail · one working failure path · the README · the video.
+**Never cut:** the model ladder · the cost curve · the three-way policy · the audit trail · one working failure path · the README.
 
 ---
 
@@ -417,7 +394,7 @@ Every one of these is **material for the field they read first.** A build with n
 
 Because *"the last one is the one we read first."*
 
-`journal/` holds entries written as things happened, in order. Every genuine failure gets written down **when it happens** — never reconstructed at the end. Reconstructed failure stories read as fiction, and this panel reads that field first.
+`journal/` holds entries written as things happened, in order. Every genuine failure gets written down **when it happens** — never reconstructed at the end. Reconstructed failure stories read as fiction, and a reader can tell.
 
 Each entry: what broke · how it surfaced · the first (wrong) hypothesis · what it actually was · what changed as a result.
 
@@ -457,15 +434,12 @@ fix, written as it happened, is in `journal/`.
 
 ## 14. Reference
 
-- Buildathon: https://razorpay.com/buildathon/
 - IEEE-CIS 1st place, Part 1: https://www.kaggle.com/c/ieee-fraud-detection/discussion/111284
 - IEEE-CIS 1st place, Part 2 (technical): https://www.kaggle.com/c/ieee-fraud-detection/discussion/111321
 - UID detection script: https://www.kaggle.com/kyakovlev/ieee-uid-detection-v6
 - XGB "magic" 0.9600: https://www.kaggle.com/cdeotte/xgb-fraud-with-magic-0-9600
 - EDA, first 150 cols: https://www.kaggle.com/alijs1/ieee-transaction-columns-reference
 - EDA, V and ID cols: https://www.kaggle.com/cdeotte/eda-for-columns-v-and-id
-- Razorpay Disputes API: https://razorpay.com/docs/api/disputes/
-- Razorpay official MCP server: https://github.com/razorpay/razorpay-mcp-server
 
 ---
 
@@ -473,6 +447,6 @@ fix, written as it happened, is in `journal/`.
 
 - Update this file whenever a decision changes. It is the source of truth.
 - Log failures to `journal/` **as they happen**.
-- Report honestly: if a number is bad, the number goes in the report. The rubric rewards it and the panel will find it anyway.
+- Report honestly: if a number is bad, the number goes in the report. A reader will find it anyway.
 - Prefer deterministic where determinism belongs. Every LLM call must survive being asked "why not a rule?"
 - **Verify claims from writeups ourselves.** Trust nothing we haven't reproduced.

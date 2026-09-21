@@ -90,7 +90,7 @@ class AuditLog:
             open(path, "w").close()
 
     def lookup(self, transaction_id) -> Optional[dict]:
-        """Linear scan — fine for a hackathon demo's data volume. A production version
+        """Linear scan — fine for a demo's data volume. A production version
         swaps this for an indexed store without engine.py or features.py changing at all,
         same interface-isolation reasoning as store.py.
 

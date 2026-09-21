@@ -2,8 +2,7 @@
 
 **A fraud decision system, not a fraud classifier.** Given a payment, it decides — by
 what the outcome actually costs in real rupees, not an abstract score — whether to let it
-through, ask for extra verification, or block it. Built solo for Razorpay's AI Buildathon
-2026, Track 02 (AI Risk Manager).
+through, ask for extra verification, or block it. Built as a solo project.
 
 | | |
 |---|---|
@@ -74,7 +73,7 @@ and worked numbers: [CLAUDE.md §6](CLAUDE.md#6-architecture).
 
 1. **Data**: [IEEE-CIS Fraud Detection](https://www.kaggle.com/c/ieee-fraud-detection) (Kaggle) — 590k real transactions, ~3.5% fraud, real semantic features (card, email, device). Chosen over anonymized alternatives specifically so SHAP explanations are true statements about the world, not noise. Split **temporally** (train ≤ day 120, validate 121–150, test > 150) — never randomly, so nothing is ever scored using information that wouldn't exist yet in production.
 2. **Model**: the shipped engine is a **2-model ensemble** — XGBoost (tuned via a 60-trial Optuna search on PR-AUC, not ROC-AUC, which is flattered by the ~96.5% negative class) plus an untuned LightGBM, each independently Platt-calibrated and then simple-averaged. A 3rd model (CatBoost) and further per-model tuning were both tried and measured to not help. Isotonic calibration was tried first and rejected — it silently collapsed 91,271 distinct scores to 323, costing real ranking accuracy for no net benefit. Full ladder, every step measured: [`docs/experiments.md`](docs/experiments.md).
-3. **Decision**: the calibrated probability feeds a cost model (chargeback fee, processing fee, merchant margin, step-up friction cost — all sourced from Razorpay's own disclosed pricing or cited industry studies, never invented) that computes the expected ₹ value of allow/step-up/block for every transaction and picks the best one.
+3. **Decision**: the calibrated probability feeds a cost model (chargeback fee, processing fee, merchant margin, step-up friction cost — all sourced from published payment-gateway pricing or cited industry studies, never invented) that computes the expected ₹ value of allow/step-up/block for every transaction and picks the best one.
 4. **Explanation**: SHAP contributions for flagged transactions only, turned into a one-sentence narrative by an LLM — which never decides, only describes. Delete the LLM entirely and every decision stays byte-identical; only the prose degrades to a deterministic template. Proven, not just claimed — see [Fallback design](#fallback-design-proven-not-claimed) below.
 5. **Serving**: a plain-CPU Python package (`src/`) that loads the trained artifact and scores transactions with no GPU, no retraining, no internet dependency — see [Architecture](#architecture).
 
@@ -156,7 +155,7 @@ the version field, an unhashed `action_values` breakdown, and a doc contradictio
 
 - **US data, Indian cost model.** IEEE-CIS is US card-not-present e-commerce fraud; the
   *method* transfers, the specific features and thresholds would need Indian data to
-  match Razorpay's real UPI-heavy mix.
+  match the real, UPI-heavy Indian payments mix.
 - **Card-level identity reconstruction was attempted and cut.** Tried to reproduce the
   1st-place solution's client-identity purity (target 96.9/2.9/0.2 pure-legit/pure-fraud/
   mixed); best achieved was 2.11% mixed across 8 tested key configurations, ~11x the
@@ -170,7 +169,7 @@ the version field, an unhashed `action_values` breakdown, and a doc contradictio
   headline ₹17.355cr) — more than 100% of the reported value is hard-computed from real
   labels.
 - **Cost parameters are assumptions, sourced but not certain.** Chargeback fee and MDR are
-  Razorpay's own disclosed pricing; merchant margin and the LTV penalty for a wrongly
+  published payment-gateway pricing; merchant margin and the LTV penalty for a wrongly
   blocked customer are the genuinely uncertain ones, swept in a sensitivity analysis
   rather than reported as fact.
 - **A handful of held-out transactions this project's own testing produced legitimately
@@ -206,9 +205,9 @@ tests/        105 pytest tests — idempotency, replay/tamper detection, fail-cl
 artifacts/    Trained model + calibrator + sample data — not committed, see its README
 dashboard.html  The dashboard — self-contained, open directly in a browser, no server
 docs/         experiments.md (the measured ladder + both evidence experiments), plots,
-              docket.html (narrative walkthrough, self-contained, for pitch narration)
+              docket.html (narrative walkthrough, self-contained, for a narrated walkthrough)
 journal/      Engineering log — every real bug, found and fixed, written as it happened
-CLAUDE.md     Context and rationale — why this track, why this data, what the rubric wants
+CLAUDE.md     Context and rationale — why this scope, why this data, the design decisions
 ```
 
 ## Setup, in full

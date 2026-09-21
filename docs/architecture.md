@@ -131,7 +131,7 @@ decisions, not assumed from reading the code.
 A single self-contained HTML file: every dependency (CSS, JS, the real data arrays, even
 the reliability-diagram image) is inlined, with no external calls except Google Fonts, so
 it opens directly in a browser with no server, no build step, and nothing to install. This
-is deliberate — a judge should be able to see the dashboard without a Python environment.
+is deliberate — a reader should be able to see the dashboard without a Python environment.
 (An earlier iteration was a local Streamlit app; it was replaced once the zero-install
 version could carry the same data.)
 

@@ -196,7 +196,7 @@
   footer .meta{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); }
 </style>
 
-<div class="docket-tab"><span>Case File · Track 02 — AI Risk Manager · Razorpay Buildathon 2026</span></div>
+<div class="docket-tab"><span>Case File · Arbiter · Fraud Decision System</span></div>
 
 <div class="rail rail-wide">
 
@@ -206,7 +206,7 @@
       <span class="case-no">DOCKET NO. 02–ARB–2026</span>
       <span class="seal-mark">A</span>
     </div>
-    <p class="kicker">Razorpay AI Buildathon 2026 — Track 02, AI Risk Manager</p>
+    <p class="kicker">Arbiter — Fraud Decision System</p>
     <h1>The <em>Arbiter</em><br>Docket.</h1>
     <p class="lede">A record of every decision made while building a fraud system that prices its own judgment in real rupees — allow, step&#8209;up, or block — instead of guessing at a probability and calling it a day.</p>
     <p class="track mono">solo build · every claim below is measured, not asserted</p>
@@ -234,11 +234,11 @@
 
     <div class="record">
       <div class="k">Track</div>
-      <div><div class="choice">02 — AI Risk Manager</div><p>Rated on fit, not prestige. The one skill actually strongest here is ML, and Razorpay's own track note calls this the one that "surfaces the risk and ML minded builders the others miss" — the least crowded of five.</p></div>
+      <div><div class="choice">Fraud decisions</div><p>Picked on fit: the one skill actually strongest here is ML, and fraud is a problem where honest, measured evaluation matters.</p></div>
     </div>
     <div class="record">
       <div class="k">Dataset</div>
-      <div><div class="choice">A real dataset, not invented data</div><p>Real merchant data is impossible to get (private, regulated). Self-generated fraud means writing the exam and the answer key — any accuracy claim would be worthless. Only a real, independently-labelled dataset survives a skeptical panel.</p></div>
+      <div><div class="choice">A real dataset, not invented data</div><p>Real merchant data is impossible to get (private, regulated). Self-generated fraud means writing the exam and the answer key — any accuracy claim would be worthless. Only a real, independently-labelled dataset survives a skeptical reviewer.</p></div>
     </div>
     <div class="record">
       <div class="k">Which one</div>
@@ -278,7 +278,7 @@
       </div>
       <div class="dentry">
         <div class="dhead"><span class="dtag">COST MODEL</span><h3>Priced every decision in real rupees</h3><span class="verdict-chip good">headline result</span></div>
-        <p>The actual thesis. Chargeback fee and processing fee sourced from Razorpay's own disclosed pricing, checked directly rather than assumed. Two mistakes caught before trusting the number: the dataset's amounts are in dollars, and the first currency conversion was an unchecked guess. Both fixed. Ran on 92,427 untouched test-month transactions — first with the single XGBoost model (₹17.22cr), then re-run for the shipped 2-model ensemble.</p>
+        <p>The actual thesis. Chargeback fee and processing fee sourced from published payment-gateway pricing, checked directly rather than assumed. Two mistakes caught before trusting the number: the dataset's amounts are in dollars, and the first currency conversion was an unchecked guess. Both fixed. Ran on 92,427 untouched test-month transactions — first with the single XGBoost model (₹17.22cr), then re-run for the shipped 2-model ensemble.</p>
         <div class="dfig">
           <div class="f"><div class="fl">no system</div><div class="fv">₹15.68cr</div></div>
           <div class="f"><div class="fl">naive 0.5</div><div class="fv">₹16.585cr</div></div>
@@ -514,12 +514,12 @@
   <section class="rv">
     <div class="exhibit-head"><span class="num">EXHIBIT&nbsp;11</span><h2>Entered into the record, plainly</h2><div class="rule"></div></div>
     <p><strong>Borrows heavily from the 1st-place IEEE-CIS solution, and says so.</strong> Taken: the identity-key construction, card-level chargeback label semantics, group aggregates as features, time-consistency screening, and the "unseen clients, not time drift" diagnosis. Diverged, deliberately: causal aggregates instead of full-history ones, no future-leaking post-processing, a cost-minimizing objective instead of an AUC-maximizing one, and a three-way verdict instead of a score. Their model wins the raw Kaggle task, by design — different games, see Exhibit 08.</p>
-    <p><strong>What it still can't do, stated rather than buried:</strong> card-level identity reconstruction was attempted and scoped out, not solved. Step-up outcomes are modeled from cited industry rates, not measured on this dataset — quantified rather than hidden, and for the shipped ensemble that modeled contribution is actually slightly <em>negative</em> (−0.16%), which is why more than 100% of the headline is computed from real fraud labels. Built on US card-not-present data; the method transfers to Razorpay's UPI-heavy mix, the specific features would need to be re-derived. Fourteen such limitations are listed in full in the repository's exception list, alongside the engineering journal every entry above was drawn from.</p>
+    <p><strong>What it still can't do, stated rather than buried:</strong> card-level identity reconstruction was attempted and scoped out, not solved. Step-up outcomes are modeled from cited industry rates, not measured on this dataset — quantified rather than hidden, and for the shipped ensemble that modeled contribution is actually slightly <em>negative</em> (−0.16%), which is why more than 100% of the headline is computed from real fraud labels. Built on US card-not-present data; the method transfers to a UPI-heavy Indian mix, the specific features would need to be re-derived. Fourteen such limitations are listed in full in the repository's exception list, alongside the engineering journal every entry above was drawn from.</p>
   </section>
 
   <footer>
     <div class="sign">— entered into the record</div>
-    <div class="meta">ARBITER · TRACK 02, AI RISK MANAGER · RAZORPAY AI BUILDATHON 2026 · DOCKET NO. 02–ARB–2026</div>
+    <div class="meta">ARBITER · FRAUD DECISION SYSTEM · DOCKET NO. ARB–2026</div>
   </footer>
 
 </div>

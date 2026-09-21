@@ -153,7 +153,7 @@ print([c for c in df.columns if c.startswith("uid_")])
 # WHY: a silent off-by-one here (using .expanding() instead of .expanding().shift(1), or
 # grouping/sorting mismatched) would let the current row leak into its own "prior" stats.
 # That's exactly the kind of bug that produces a suspiciously great score and an indefensible
-# number in the panel room. Brute-force recompute a sample by hand and compare.
+# number in a review. Brute-force recompute a sample by hand and compare.
 
 # %%
 rng = np.random.default_rng(42)
