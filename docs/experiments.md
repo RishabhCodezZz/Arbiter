@@ -92,8 +92,8 @@ All monetary results are retrospective simulated value under the parameters belo
 |---|---|---|
 | No fraud system at all | ₹15.68 crore | — |
 | Reference 0.5 cutoff | ₹16.58 crore | +₹90.0 lakh vs no system |
-| **Arbiter: single-XGBoost run** | **₹17.22 crore** | **+₹1.54 crore vs no system, +₹64.3 lakh vs reference 0.5 0.5** |
-| **Arbiter: shipped 2-model ensemble** | **₹17.355 crore** | **+₹1.678 crore vs no system, +₹77.03 lakh vs reference 0.5 0.5** |
+| **Arbiter: single-XGBoost run** | **₹17.22 crore** | **+₹1.54 crore vs no system, +₹64.3 lakh vs reference 0.5** |
+| **Arbiter: shipped 2-model ensemble** | **₹17.355 crore** | **+₹1.678 crore vs no system, +₹77.03 lakh vs reference 0.5** |
 
 Historical single policy mix: allow 88,560, step-up 2,519, block 1,348. Current ensemble: 88,331 / 2,782 / 1,314. Two-way presentation curves were optimized on test, with interior minima p = 0.774 (single) and p = 0.589 (ensemble); neither is the amount-dependent three-way operating point.
 
