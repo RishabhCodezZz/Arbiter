@@ -1,3 +1,20 @@
+# Journal navigation
+
+This is a sequential historical record, oldest entry first. Scope and numbers changed
+as work progressed; entries retain what was recorded at that stage, including claims
+later corrected. Use the [evaluation report](../docs/eval_report.md) for current results
+and limitations, [experiments](../docs/experiments.md) for evidence/provenance, and
+[architecture](../docs/architecture.md) for current runtime behavior. The original
+preface and all entries below are retained as historical material.
+
+- [Baseline and UID investigation](#the-baseline-and-the-uid-investigation)
+- [Migration from Kaggle to the engine](#leaving-kaggle-for-the-real-engine)
+- [LLM benchmark and leakage comparison](#the-llm-benchmark-and-the-kaggle-legal-comparison)
+- [Ensemble diagnostic results](#ensemble-diagnostic-result--a-real-positive-signal-but-not-yet-confirmed-real)
+- [Final two-versus-three value check](#rupee-value-check-result--the-ensemble-decision-confirmed-but-2-vs-3-model-reopened)
+- [Ensemble engine rebuild](#engine-rebuild--phase-1-code-started-and-completed)
+- [Automated reviews](#automated-ai-code-review-codex--two-real-bugs-in-shipped-src-plus-honest-production-gaps)
+
 <!--
 Engineering log, append-only, written as the work happened — oldest entry first. Numbers
 evolve down the page as the project progressed (the test suite grew 13 → 36 → 41 → 70 → 98;

@@ -1,37 +1,54 @@
-# notebooks/ — the Kaggle research record
+# Notebook index
 
-Each stage is a **jupytext pair** sharing one stem:
+Research runs on Kaggle with IEEE-CIS competition data attached and GPU enabled.
+Each notebook reloads its own data/state; the local `src/` engine only loads exported
+artifacts. [Notebook 06](06_cost_model_refined.py) is the current regeneration entry.
+
+## Paired source and outputs
+
+Each stage keeps a jupytext pair with the same stem:
 
 | File | Role |
 |---|---|
-| `NN_name.py` | the readable, diff-able source — this is what gets reviewed |
-| `NN_name.ipynb` | the same code, executed on Kaggle, outputs committed as proof the numbers in [`docs/experiments.md`](../docs/experiments.md) are real and reproducible |
+| `NN_name.py` | Readable source for review and execution |
+| `NN_name.ipynb` | Executed notebook retaining the code and outputs from a recorded run |
 
-All notebooks are **self-contained** — each reloads its own state from the competition
-data rather than assuming a prior kernel survived. Run on Kaggle (competition data
-attached, GPU on). The `src/` package never runs any of this — it only loads the exported
-artifact.
+Executed outputs are historical evidence for the code recorded in that notebook. They
+do not automatically prove an unchanged result for the current Python source: source
+and output pairs may reflect different revisions. Reproduce a claim by executing its
+corresponding source with the required data/environment and inspecting fresh outputs.
+Keep both files when archiving research. [Experiments](../docs/experiments.md) identifies
+historical stages; the [evaluation report](../docs/eval_report.md) owns current results.
 
-## The ladder
+## Stages
 
-| # | Notebook | What it adds | Headline number | Keep because |
-|---|---|---|---|---|
-| 01 | `01_eda_baseline` | V0 floor — plain XGBoost, no history features, no tuning. EDA + the UID-identity investigation. | PR-AUC 0.5486 / ROC-AUC 0.9002 | Bottom rung of the measured ladder; the only place the "could not reproduce 96.9/2.9/0.2 → Component C cut" investigation lives. |
-| 02 | `02_causal_features` | V1/V2 — causal (expanding-window, backward-only) client-history aggregates + time-consistency screening. | V2 PR-AUC 0.5446 | Builds the feature set every downstream notebook and Component B depend on. |
-| 03 | `03_reduce_tune_calibrate` | V3 (V-column reduction) + V4 (60-trial Optuna) + V5 (calibration: isotonic rejected, Platt shipped). | V4 PR-AUC 0.5514 / ROC-AUC 0.9077 | Produces the winning hyperparameters `04`/`06` hard-code, and the reliability-diagram. |
-| 04 | `04_cost_model` | **History only.** The full record of the cost-model stage — 3-way policy, G6 gate, artifact exports — **plus** four one-off diagnostics (error-analysis export, training-dev/bias-variance-mismatch decomposition, bounded hyperparameter sweep, per-segment calibration). | +₹1.54cr vs no system (single-XGBoost run; shipped ensemble is +₹1.678cr, notebook 06) | Superseded by `06` for the pipeline, but it is the only place the four diagnostics' code lives, and they are cited throughout `docs/experiments.md`. Not the file to re-run. |
-| 05 | `05_kaggle_legal_leaky` | Component B, second half — the deliberately leaky full-history twin of `02`'s causal features. Same names, same stats, the only variable is whether the window sees the future. | causal 0.5446 vs leaky 0.5512 → gap +0.0066 | The differentiator: measures what causal honesty costs. |
-| 06 | `06_cost_model_refined` | **The current entry point.** `04` minus the four completed diagnostics, plus the still-active XGBoost + LightGBM (+ CatBoost) ensemble diagnostic and its bootstrap. Produces every artifact `src/` still needs. | Shipped 2-model ensemble: ₹17.355cr total · **+₹1.678cr vs no system** · +₹13.58L over the single-XGBoost run (CI [+₹6.55L, +₹21.24L]) | Run this one to regenerate artifacts. |
+| Stage | Source / recorded run | Purpose and status |
+|---|---|---|
+| 01 | [01_eda_baseline.py](01_eda_baseline.py) / [outputs](01_eda_baseline.ipynb) | Historical baseline, EDA and UID investigation; card-level state was cut after identity reconstruction fell short |
+| 02 | [02_causal_features.py](02_causal_features.py) / [outputs](02_causal_features.ipynb) | Expanding history aggregates and time-consistency screening; feature basis for later stages |
+| 03 | [03_reduce_tune_calibrate.py](03_reduce_tune_calibrate.py) / [outputs](03_reduce_tune_calibrate.ipynb) | V-column reduction, XGBoost tuning and historical single-model calibration comparisons |
+| 04 | [04_cost_model.py](04_cost_model.py) / [outputs](04_cost_model.ipynb) | Archival research evidence: historical single-XGBoost cost pipeline and the retained error analysis, training-dev decomposition, bounded hyperparameter sweep and segment calibration source |
+| 05 | [05_kaggle_legal_leaky.py](05_kaggle_legal_leaky.py) / [outputs](05_kaggle_legal_leaky.ipynb) | Historical full-history feature/post-processing comparison against causal stage 02; results apply to that comparison |
+| 06 | [06_cost_model_refined.py](06_cost_model_refined.py) / [outputs](06_cost_model_refined.ipynb) | Current artifact regeneration entry, including model exports, ensemble comparisons and final two-model dashboard/raw re-export |
 
-## To reproduce the artifacts
+Notebook 04 remains at its existing path because it contains unique diagnostic code
+and evidence cited by the journal and experiments. Execute the relevant 04 diagnostics
+when reproducing those historical analyses; use 06 for current engine artifacts.
+The historical LightGBM tuning search and LLM benchmark export cells were removed from
+current sources, so retain their downloaded outputs and recorded runs.
 
-Run **`06_cost_model_refined`** on Kaggle and download the outputs listed in
-[`artifacts/README.md`](../artifacts/README.md). `04`'s executed pipeline sections are
-byte-identical to `06`'s apart from the removed diagnostics (diffed at consolidation
-time), so `04_cost_model.ipynb` remains a valid proof-of-run for the shared pipeline.
+## Regeneration
 
-## Known cosmetic debt
+Run notebook 06 through the final ensemble re-export and download the files listed in
+the [artifact guide](../artifacts/README.md). Its earlier cells export single-XGBoost
+curve/raw data, which the final addendum overwrites with ensemble probabilities. Each
+model has an independent Platt calibrator; the engine uses their simple average.
 
-`reduce_mem()` is copy-pasted into every notebook rather than imported — a deliberate
-trade for self-containment (a Kaggle notebook can't `import` from a sibling file without
-setup). Same function, same behaviour, in all six.
+Successful artifact regeneration checks that the current pipeline executes. It does
+not create an independent evaluation: the test month has been reused for follow-ups
+and final selection. Notebook 04's outputs cannot stand in for a fresh run of current
+06, even where pipeline sections were shared at consolidation time.
+
+`reduce_mem()` is copied into the notebooks to keep them self-contained on Kaggle.
+Caches are regenerable; source/output pairs and result exports should be retained.
+See [retention guidance](../artifacts/README.md#retention) before resetting runtime state.
